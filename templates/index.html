@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Equis — Asset Pricing Platform</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<link rel="stylesheet" href="/static/style.css"/>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── Sidebar ── -->
+  <nav class="sidebar">
+    <div class="logo">
+      <div class="logo-name">Equis</div>
+      <div class="logo-sub">Research Platform</div>
+    </div>
+    <div class="nav">
+      <div class="nav-label">Modules</div>
+      <div class="nav-item active" id="nav-pricing" onclick="switchModule('pricing')">
+        <span class="nav-dot"></span> Asset Pricing
+      </div>
+      <div class="nav-item" id="nav-factors" onclick="switchModule('factors')">
+        <span class="nav-dot"></span> Factor Analysis
+      </div>
+      <div class="nav-item" id="nav-portfolio" onclick="switchModule('portfolio')">
+        <span class="nav-dot"></span> Portfolio
+      </div>
+      <div class="nav-item" id="nav-score" onclick="switchModule('score')">
+        <span class="nav-dot"></span> Investment Score
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="footer-note">Data: yfinance · FF Library</div>
+    </div>
+  </nav>
+
+  <!-- ── Main ── -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="search-wrap">
+        <span class="search-icon">⌕</span>
+        <input id="tickerInput" type="text" placeholder="Ticker — e.g. AAPL, NVDA, MSFT"
+               autocomplete="off" onkeydown="if(event.key==='Enter') runAnalysis()"/>
+      </div>
+      <select id="periodSelect">
+        <option value="1y">1 Year</option>
+        <option value="2y" selected>2 Years</option>
+        <option value="3y">3 Years</option>
+        <option value="5y">5 Years</option>
+      </select>
+      <button id="runBtn" onclick="runAnalysis()">Analyse</button>
+      <div id="topbarStatus"></div>
+    </div>
+
+    <!-- Content -->
+    <div class="content" id="mainContent">
+      <div class="state-empty">
+        <div class="empty-icon">◈</div>
+        <p>Enter a US stock ticker and press <strong>Analyse</strong></p>
+        <p class="empty-sub">Runs CAPM pricing, Fama-French factor decomposition, and Investment Score simultaneously</p>
+      </div>
+    </div>
+
+    <!-- Portfolio panel (separate input) -->
+    <div class="portfolio-panel" id="portfolioPanel" style="display:none">
+      <div class="port-input-area">
+        <div class="port-title">Portfolio Builder</div>
+        <div class="port-sub">Add up to 15 tickers. Leave weights blank for equal weighting.</div>
+        <div id="portRows"></div>
+        <div class="port-actions">
+          <button class="btn-ghost" onclick="addPortRow()">+ Add ticker</button>
+          <button class="btn-primary" onclick="runPortfolio()">Run Portfolio Analysis</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────
+let state = { ticker: null, period: null, data: null, portData: null };
+let currentModule = 'pricing';
+
+// ─────────────────────────────────────────────
+//  Module switching
+// ─────────────────────────────────────────────
+function switchModule(mod) {
+  currentModule = mod;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('nav-' + mod).classList.add('active');
+
+  const panel = document.getElementById('portfolioPanel');
+  const content = document.getElementById('mainContent');
+
+  if (mod === 'portfolio') {
+    panel.style.display = 'flex';
+    content.style.display = 'none';
+    if (!document.getElementById('portRows').children.length) {
+      addPortRow(); addPortRow(); addPortRow();
+    }
+    if (state.portData) renderPortfolio(state.portData);
+  } else {
+    panel.style.display = 'none';
+    content.style.display = 'block';
+    if (mod === 'pricing') {
+      if (!state.pricing) renderEmpty();
+      else renderPricing(state.pricing);
+    } else if (mod === 'factors') {
+      loadFactors();
+    } else if (mod === 'score') {
+      loadScore();
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Run analysis
+// ─────────────────────────────────────────────
+async function runAnalysis() {
+  const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+  const period = document.getElementById('periodSelect').value;
+  if (!ticker) return;
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.textContent = 'Loading…';
+  setStatus('Fetching data…');
+  renderLoading();
+
+  try {
+    const res = await fetch('/api/analyse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker, period })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    state.ticker = ticker;
+    state.period = period;
+    state.pricing = data;
+    state.factors = null;
+    state.scoreData = null;
+
+    setStatus(`${ticker} · ${period}`);
+    if (currentModule === 'pricing') renderPricing(data);
+    else if (currentModule === 'factors') loadFactors();
+    else if (currentModule === 'score') loadScore();
+
+  } catch (err) {
+    renderError(err.message);
+    setStatus('');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Analyse';
+  }
+}
+
+async function loadFactors() {
+  if (!state.ticker) { renderEmpty(); return; }
+  if (state.factors) { renderFactors(state.factors); return; }
+  renderLoading();
+  try {
+    const res = await fetch('/api/factors', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker: state.ticker, period: state.period })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    state.factors = data;
+    renderFactors(data);
+  } catch(err) { renderError(err.message); }
+}
+
+async function loadScore() {
+  if (!state.ticker) { renderEmpty(); return; }
+  if (state.scoreData) { renderScore(state.scoreData); return; }
+  renderLoading();
+  try {
+    const res = await fetch('/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker: state.ticker, period: state.period })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    state.scoreData = data;
+    renderScore(data);
+  } catch(err) { renderError(err.message); }
+}
+
+// ─────────────────────────────────────────────
+//  Portfolio
+// ─────────────────────────────────────────────
+function addPortRow() {
+  const rows = document.getElementById('portRows');
+  if (rows.children.length >= 15) return;
+  const div = document.createElement('div');
+  div.className = 'port-row';
+  div.innerHTML = `
+    <input type="text" placeholder="Ticker" class="port-ticker" maxlength="10"/>
+    <input type="number" placeholder="Weight %" class="port-weight" min="0" max="100" step="0.1"/>
+    <button class="btn-remove" onclick="this.parentElement.remove()">×</button>`;
+  rows.appendChild(div);
+}
+
+async function runPortfolio() {
+  const rows = document.querySelectorAll('.port-row');
+  const tickers = [], weights = [];
+  rows.forEach(r => {
+    const t = r.querySelector('.port-ticker').value.trim().toUpperCase();
+    const w = parseFloat(r.querySelector('.port-weight').value);
+    if (t) { tickers.push(t); weights.push(isNaN(w) ? 0 : w / 100); }
+  });
+  if (tickers.length < 2) { alert('Add at least 2 tickers.'); return; }
+
+  const period = document.getElementById('periodSelect').value;
+  const btn = document.querySelector('.btn-primary');
+  btn.disabled = true; btn.textContent = 'Loading…';
+
+  try {
+    const res = await fetch('/api/portfolio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tickers, weights, period })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    state.portData = data;
+    renderPortfolio(data);
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Run Portfolio Analysis';
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Helpers
+// ─────────────────────────────────────────────
+function setStatus(msg) {
+  document.getElementById('topbarStatus').textContent = msg;
+}
+function pct(v) { return (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%'; }
+function fix2(v) { return parseFloat(v).toFixed(2); }
+function fix3(v) { return parseFloat(v).toFixed(3); }
+function cls(v)  { return v >= 0 ? 'pos' : 'neg'; }
+
+function renderEmpty() {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="state-empty">
+      <div class="empty-icon">◈</div>
+      <p>Enter a US stock ticker and press <strong>Analyse</strong></p>
+      <p class="empty-sub">Runs CAPM pricing, Fama-French factor decomposition, and Investment Score simultaneously</p>
+    </div>`;
+}
+
+function renderLoading() {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="state-loading">
+      <div class="spinner"></div>
+      <div>Fetching price data and running analysis…</div>
+      <div class="loading-sub">This takes 10–20 seconds — downloading FF factors on first run</div>
+    </div>`;
+}
+
+function renderError(msg) {
+  document.getElementById('mainContent').innerHTML = `
+    <div class="state-error">⚠ ${msg}</div>`;
+}
+
+const PLOTLY_LAYOUT = {
+  paper_bgcolor: 'transparent',
+  plot_bgcolor:  'transparent',
+  font:  { color: '#94a3b8', size: 11, family: 'Inter, sans-serif' },
+  margin: { t: 10, r: 20, b: 40, l: 50 },
+  xaxis: { gridcolor: '#1a2540', linecolor: '#1a2540', zerolinecolor: '#1a2540' },
+  yaxis: { gridcolor: '#1a2540', linecolor: '#1a2540', zerolinecolor: '#1a2540' },
+  legend: { bgcolor: 'transparent', font: { size: 11 } },
+  hovermode: 'x unified'
+};
+
+function layout(overrides = {}) {
+  return Object.assign({}, PLOTLY_LAYOUT, overrides);
+}
+
+// ─────────────────────────────────────────────
+//  Module 1: Asset Pricing
+// ─────────────────────────────────────────────
+function renderPricing(data) {
+  const m = data.pricing.metrics;
+  const c = data.pricing.charts;
+  const t = data.ticker;
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="module-header">
+      <div class="module-title">Asset Pricing Engine</div>
+      <div class="module-sub">CAPM analysis · risk-adjusted performance · return attribution</div>
+    </div>
+
+    <div class="ticker-badge">
+      <span class="sym">${t}</span>
+      <span class="badge-sep">vs S&P 500</span>
+      <span class="badge-period">${state.period}</span>
+    </div>
+
+    <div class="section-head">Risk & Return Metrics</div>
+    <div class="metrics-grid">
+      <div class="mc"><div class="mc-l">Beta</div>
+        <div class="mc-v ${m.beta > 1.2 ? 'neg' : m.beta < 0.8 ? 'pos' : 'neu'}">${fix3(m.beta)}</div>
+        <div class="mc-s">${m.beta > 1 ? 'Higher' : 'Lower'} systematic risk</div></div>
+
+      <div class="mc"><div class="mc-l">Realised Return</div>
+        <div class="mc-v ${cls(m.ann_return)}">${pct(m.ann_return)}</div>
+        <div class="mc-s">Market: ${pct(m.bench_return)}</div></div>
+
+      <div class="mc"><div class="mc-l">CAPM Expected</div>
+        <div class="mc-v neu">${pct(m.capm_exp)}</div>
+        <div class="mc-s">Rf ${pct(m.rf_ann)} + β·ERP</div></div>
+
+      <div class="mc"><div class="mc-l">Jensen's Alpha</div>
+        <div class="mc-v ${cls(m.alpha)}">${pct(m.alpha)}</div>
+        <div class="mc-s">Return above CAPM</div></div>
+
+      <div class="mc"><div class="mc-l">Sharpe Ratio</div>
+        <div class="mc-v ${m.sharpe > 1 ? 'pos' : m.sharpe > 0 ? 'amb' : 'neg'}">${fix2(m.sharpe)}</div>
+        <div class="mc-s">Return per unit total risk</div></div>
+
+      <div class="mc"><div class="mc-l">Sortino Ratio</div>
+        <div class="mc-v ${m.sortino > 1 ? 'pos' : m.sortino > 0 ? 'amb' : 'neg'}">${fix2(m.sortino)}</div>
+        <div class="mc-s">Return per unit downside risk</div></div>
+
+      <div class="mc"><div class="mc-l">Treynor Ratio</div>
+        <div class="mc-v ${m.treynor > 0 ? 'pos' : 'neg'}">${fix2(m.treynor)}</div>
+        <div class="mc-s">Return per unit systematic risk</div></div>
+
+      <div class="mc"><div class="mc-l">Volatility (Ann.)</div>
+        <div class="mc-v ${m.ann_vol > 0.35 ? 'neg' : m.ann_vol > 0.2 ? 'amb' : 'pos'}">${pct(m.ann_vol)}</div>
+        <div class="mc-s">Annualised price risk</div></div>
+
+      <div class="mc"><div class="mc-l">Max Drawdown</div>
+        <div class="mc-v neg">-${(m.max_dd * 100).toFixed(2)}%</div>
+        <div class="mc-s">Worst peak-to-trough loss</div></div>
+
+      <div class="mc"><div class="mc-l">VaR 95%</div>
+        <div class="mc-v neg">-${(m.var95 * 100).toFixed(2)}%</div>
+        <div class="mc-s">Daily tail loss (5% of days)</div></div>
+
+      <div class="mc"><div class="mc-l">VaR 99%</div>
+        <div class="mc-v neg">-${(m.var99 * 100).toFixed(2)}%</div>
+        <div class="mc-s">Daily tail loss (1% of days)</div></div>
+
+      <div class="mc"><div class="mc-l">Information Ratio</div>
+        <div class="mc-v ${m.ir > 0.5 ? 'pos' : m.ir > 0 ? 'amb' : 'neg'}">${fix2(m.ir)}</div>
+        <div class="mc-s">Active return vs tracking error</div></div>
+    </div>
+
+    <div class="section-head">Visual Analysis</div>
+    <div class="chart-full"><div class="cc">
+      <div class="cc-t">Price Performance — ${t} vs S&P 500 (rebased to 100)</div>
+      <div id="chartPerf" class="chart-area"></div>
+    </div></div>
+
+    <div class="charts-2col">
+      <div class="cc">
+        <div class="cc-t">Rolling 60-Day Beta</div>
+        <div id="chartBeta" class="chart-area"></div>
+      </div>
+      <div class="cc">
+        <div class="cc-t">Daily Return Distribution</div>
+        <div id="chartDist" class="chart-area"></div>
+      </div>
+    </div>
+
+    <div class="chart-full"><div class="cc">
+      <div class="cc-t">Drawdown Over Time</div>
+      <div id="chartDD" class="chart-area"></div>
+    </div></div>
+
+    <div class="chart-full"><div class="cc">
+      <div class="cc-t">CAPM Security Market Line — Where does ${t} sit?</div>
+      <div id="chartSML" class="chart-area" style="height:320px"></div>
+    </div></div>
+  `;
+
+  // Performance chart
+  Plotly.newPlot('chartPerf', [
+    { x: c.dates, y: c.stock_rebased, name: t, line: { color: '#3b82f6', width: 2 }, type: 'scatter' },
+    { x: c.dates, y: c.bench_rebased, name: 'S&P 500', line: { color: '#475569', width: 1.5, dash: 'dot' }, type: 'scatter' }
+  ], layout(), { responsive: true, displayModeBar: false });
+
+  // Rolling beta
+  Plotly.newPlot('chartBeta', [
+    { x: c.roll_dates, y: c.roll_betas, name: 'Beta', line: { color: '#a78bfa', width: 1.5 }, type: 'scatter' },
+    { x: [c.roll_dates[0], c.roll_dates[c.roll_dates.length-1]], y: [1, 1], name: 'β=1', line: { color: '#334155', dash: 'dot', width: 1 }, type: 'scatter' }
+  ], layout(), { responsive: true, displayModeBar: false });
+
+  // Distribution
+  Plotly.newPlot('chartDist', [
+    { x: c.dist_labels, y: c.dist_values, type: 'bar',
+      marker: { color: c.dist_labels.map(l => parseFloat(l) >= 0 ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.6)') } }
+  ], layout({ xaxis: { ...PLOTLY_LAYOUT.xaxis, title: 'Daily Return %' }, showlegend: false }), { responsive: true, displayModeBar: false });
+
+  // Drawdown
+  Plotly.newPlot('chartDD', [
+    { x: c.dd_dates, y: c.dd_series, fill: 'tozeroy',
+      fillcolor: 'rgba(239,68,68,0.1)', line: { color: '#ef4444', width: 1.5 }, type: 'scatter', showlegend: false }
+  ], layout({ yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'Drawdown %' } }), { responsive: true, displayModeBar: false });
+
+  // SML
+  Plotly.newPlot('chartSML', [
+    { x: c.sml_betas, y: c.sml_returns.map(v => v * 100), name: 'Security Market Line',
+      line: { color: '#334155', dash: 'dot', width: 1.5 }, type: 'scatter' },
+    { x: [c.stock_beta], y: [c.stock_return * 100], name: `${t} (actual)`,
+      mode: 'markers', marker: { color: m.alpha >= 0 ? '#22c55e' : '#ef4444', size: 12 } },
+    { x: [c.stock_beta], y: [c.capm_return * 100], name: 'CAPM predicted',
+      mode: 'markers', marker: { color: '#3b82f6', size: 10, symbol: 'triangle-up' } }
+  ], layout({
+    xaxis: { ...PLOTLY_LAYOUT.xaxis, title: 'Beta', type: 'linear' },
+    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'Annualised Return (%)' },
+    hovermode: 'closest'
+  }), { responsive: true, displayModeBar: false });
+}
+
+// ─────────────────────────────────────────────
+//  Module 2: Factor Analysis
+// ─────────────────────────────────────────────
+function renderFactors(data) {
+  const f = data.factors;
+  const ff5 = f.ff5;
+  const ff3 = f.ff3;
+  const t = data.ticker;
+
+  const factorNames = { MKT_RF: 'Market (MKT-RF)', SMB: 'Size (SMB)', HML: 'Value (HML)', RMW: 'Profitability (RMW)', CMA: 'Investment (CMA)' };
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="module-header">
+      <div class="module-title">Factor Analysis Engine</div>
+      <div class="module-sub">Fama-French 3 & 5 factor decomposition · return attribution</div>
+    </div>
+
+    <div class="ticker-badge">
+      <span class="sym">${t}</span>
+      <span class="badge-sep">Fama-French 5-Factor</span>
+    </div>
+
+    <div class="section-head">Factor Loadings — FF5 Model</div>
+    <div class="metrics-grid">
+      ${Object.entries(ff5.loadings).map(([k, v]) => `
+        <div class="mc">
+          <div class="mc-l">${factorNames[k] || k}</div>
+          <div class="mc-v ${v > 0 ? 'pos' : 'neg'}">${fix3(v)}</div>
+          <div class="mc-s">Factor beta</div>
+        </div>`).join('')}
+      <div class="mc">
+        <div class="mc-l">R² (FF5)</div>
+        <div class="mc-v neu">${(ff5.r2 * 100).toFixed(1)}%</div>
+        <div class="mc-s">Variance explained</div>
+      </div>
+      <div class="mc">
+        <div class="mc-l">Residual Alpha (Ann.)</div>
+        <div class="mc-v ${cls(ff5.alpha)}">${pct(ff5.alpha)}</div>
+        <div class="mc-s">True stock-specific return</div>
+      </div>
+    </div>
+
+    <div class="section-head">FF3 Model Comparison</div>
+    <div class="metrics-grid">
+      ${Object.entries(ff3.loadings).map(([k, v]) => `
+        <div class="mc">
+          <div class="mc-l">${factorNames[k] || k}</div>
+          <div class="mc-v ${v > 0 ? 'pos' : 'neg'}">${fix3(v)}</div>
+          <div class="mc-s">FF3 loading</div>
+        </div>`).join('')}
+      <div class="mc">
+        <div class="mc-l">R² (FF3)</div>
+        <div class="mc-v neu">${(ff3.r2 * 100).toFixed(1)}%</div>
+        <div class="mc-s">Variance explained</div>
+      </div>
+      <div class="mc">
+        <div class="mc-l">Residual Alpha (Ann.)</div>
+        <div class="mc-v ${cls(ff3.alpha)}">${pct(ff3.alpha)}</div>
+        <div class="mc-s">FF3 stock-specific return</div>
+      </div>
+    </div>
+
+    <div class="factor-profile-card">
+      <div class="fp-label">Factor Profile</div>
+      <div class="fp-value">${f.factor_profile}</div>
+    </div>
+
+    <div class="section-head">Factor Contributions to Return (FF5, Annualised)</div>
+    <div class="chart-full"><div class="cc">
+      <div class="cc-t">How much did each factor contribute to ${t}'s return?</div>
+      <div id="chartFactors" class="chart-area"></div>
+    </div></div>
+
+    <div class="charts-2col">
+      <div class="cc">
+        <div class="cc-t">FF3 vs FF5 — R² Comparison</div>
+        <div id="chartR2" class="chart-area"></div>
+      </div>
+      <div class="cc">
+        <div class="cc-t">FF5 Factor Loadings</div>
+        <div id="chartLoadings" class="chart-area"></div>
+      </div>
+    </div>
+  `;
+
+  // Factor contributions bar
+  const contribs = ff5.contributions;
+  const labels = Object.keys(contribs).map(k => factorNames[k] || k);
+  const values = Object.values(contribs).map(v => +(v * 100).toFixed(3));
+  Plotly.newPlot('chartFactors', [{
+    x: labels, y: values, type: 'bar', orientation: 'v',
+    marker: { color: values.map(v => v >= 0 ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.7)') },
+    text: values.map(v => v.toFixed(2) + '%'), textposition: 'outside'
+  }], layout({
+    xaxis: { ...PLOTLY_LAYOUT.xaxis, type: 'category' },
+    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'Contribution (%)' },
+    showlegend: false
+  }), { responsive: true, displayModeBar: false });
+
+  // R2 comparison
+  Plotly.newPlot('chartR2', [{
+    x: ['FF3 Model', 'FF5 Model'],
+    y: [+(ff3.r2 * 100).toFixed(2), +(ff5.r2 * 100).toFixed(2)],
+    type: 'bar',
+    marker: { color: ['#3b82f6', '#22c55e'] },
+    text: [ff3.r2.toFixed(3), ff5.r2.toFixed(3)], textposition: 'outside'
+  }], layout({
+    xaxis: { ...PLOTLY_LAYOUT.xaxis, type: 'category' },
+    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'R² (%)' },
+    showlegend: false
+  }), { responsive: true, displayModeBar: false });
+
+  // Loadings bar
+  const lKeys = Object.keys(ff5.loadings);
+  const lVals = Object.values(ff5.loadings);
+  Plotly.newPlot('chartLoadings', [{
+    x: lKeys, y: lVals, type: 'bar',
+    marker: { color: lVals.map(v => v >= 0 ? 'rgba(59,130,246,0.7)' : 'rgba(245,158,11,0.7)') }
+  }], layout({
+    xaxis: { ...PLOTLY_LAYOUT.xaxis, type: 'category' },
+    showlegend: false
+  }), { responsive: true, displayModeBar: false });
+}
+
+// ─────────────────────────────────────────────
+//  Module 3: Portfolio
+// ─────────────────────────────────────────────
+function renderPortfolio(data) {
+  const m = data.metrics;
+  const c = data.charts;
+
+  const portHTML = `
+    <div class="module-header">
+      <div class="module-title">Portfolio Construction & Optimisation</div>
+      <div class="module-sub">Portfolio analytics · efficient frontier · Monte Carlo optimisation</div>
+    </div>
+
+    <div class="section-head">Portfolio Metrics</div>
+    <div class="metrics-grid">
+      <div class="mc"><div class="mc-l">Portfolio Return</div>
+        <div class="mc-v ${cls(m.ann_return)}">${pct(m.ann_return)}</div>
+        <div class="mc-s">Annualised</div></div>
+      <div class="mc"><div class="mc-l">Portfolio Volatility</div>
+        <div class="mc-v ${m.ann_vol > 0.25 ? 'neg' : 'amb'}">${pct(m.ann_vol)}</div>
+        <div class="mc-s">Annualised</div></div>
+      <div class="mc"><div class="mc-l">Sharpe Ratio</div>
+        <div class="mc-v ${m.sharpe > 1 ? 'pos' : m.sharpe > 0 ? 'amb' : 'neg'}">${fix2(m.sharpe)}</div>
+        <div class="mc-s">Risk-adjusted return</div></div>
+      <div class="mc"><div class="mc-l">Portfolio Beta</div>
+        <div class="mc-v neu">${fix3(m.beta)}</div>
+        <div class="mc-s">Market sensitivity</div></div>
+      <div class="mc"><div class="mc-l">Portfolio Alpha</div>
+        <div class="mc-v ${cls(m.alpha)}">${pct(m.alpha)}</div>
+        <div class="mc-s">Above CAPM prediction</div></div>
+      <div class="mc"><div class="mc-l">Max Drawdown</div>
+        <div class="mc-v neg">-${(m.max_dd * 100).toFixed(2)}%</div>
+        <div class="mc-s">Worst loss</div></div>
+    </div>
+
+    <div class="section-head">Holdings</div>
+    <table class="holdings-table">
+      <thead><tr><th>Ticker</th><th>Weight</th><th>Ann. Return</th><th>Volatility</th><th>Sharpe</th></tr></thead>
+      <tbody>
+        ${data.holdings.map(h => `
+          <tr>
+            <td class="sym-cell">${h.ticker}</td>
+            <td>${(h.weight * 100).toFixed(1)}%</td>
+            <td class="${cls(h.ann_return)}">${pct(h.ann_return)}</td>
+            <td>${pct(h.ann_vol)}</td>
+            <td class="${h.sharpe > 1 ? 'pos' : h.sharpe > 0 ? 'amb' : 'neg'}">${fix2(h.sharpe)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+
+    <div class="charts-2col">
+      <div class="cc">
+        <div class="cc-t">Portfolio vs S&P 500 (rebased to 100)</div>
+        <div id="chartPortPerf" class="chart-area"></div>
+      </div>
+      <div class="cc">
+        <div class="cc-t">Correlation Matrix</div>
+        <div id="chartCorr" class="chart-area"></div>
+      </div>
+    </div>
+
+    <div class="chart-full"><div class="cc">
+      <div class="cc-t">Efficient Frontier — 3,000 Monte Carlo Portfolios</div>
+      <div id="chartEF" class="chart-area" style="height:380px"></div>
+    </div></div>
+
+    <div class="section-head">Optimised Portfolios</div>
+    <div class="opt-grid">
+      <div class="opt-card">
+        <div class="opt-title">Minimum Variance</div>
+        <div class="opt-sub">Lowest possible volatility</div>
+        ${Object.entries(data.min_var_weights).map(([t, w]) =>
+          `<div class="opt-row"><span>${t}</span><span>${(w*100).toFixed(1)}%</span></div>`).join('')}
+      </div>
+      <div class="opt-card">
+        <div class="opt-title">Maximum Sharpe</div>
+        <div class="opt-sub">Best risk-adjusted return</div>
+        ${Object.entries(data.max_sharpe_weights).map(([t, w]) =>
+          `<div class="opt-row"><span>${t}</span><span>${(w*100).toFixed(1)}%</span></div>`).join('')}
+      </div>
+    </div>
+  `;
+
+  document.getElementById('portfolioPanel').innerHTML = `<div class="port-results">${portHTML}</div>`;
+
+  // Performance
+  Plotly.newPlot('chartPortPerf', [
+    { x: c.dates, y: c.port_cumulative, name: 'Portfolio', line: { color: '#3b82f6', width: 2 }, type: 'scatter' },
+    { x: c.dates, y: c.bench_cumulative, name: 'S&P 500', line: { color: '#475569', width: 1.5, dash: 'dot' }, type: 'scatter' }
+  ], layout(), { responsive: true, displayModeBar: false });
+
+  // Correlation heatmap
+  const corr = data.corr_matrix;
+  Plotly.newPlot('chartCorr', [{
+    z: corr.values, x: corr.labels, y: corr.labels,
+    type: 'heatmap', colorscale: 'RdBu', reversescale: true, zmin: -1, zmax: 1
+  }], layout({
+    margin: { t: 10, r: 10, b: 60, l: 60 },
+    xaxis: { ...PLOTLY_LAYOUT.xaxis, type: 'category' },
+    yaxis: { ...PLOTLY_LAYOUT.yaxis, type: 'category' }
+  }), { responsive: true, displayModeBar: false });
+
+  // Efficient frontier
+  const ef = data.efficient_frontier;
+  Plotly.newPlot('chartEF', [{
+    x: ef.vols.map(v => v * 100), y: ef.returns.map(v => v * 100),
+    mode: 'markers', type: 'scatter', name: 'Portfolios',
+    marker: { color: ef.sharpes, colorscale: 'Viridis', size: 4, showscale: true,
+              colorbar: { title: 'Sharpe', thickness: 12, len: 0.8 } }
+  }], layout({
+    xaxis: { ...PLOTLY_LAYOUT.xaxis, title: 'Volatility (%)', type: 'linear' },
+    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'Return (%)', type: 'linear' },
+    hovermode: 'closest'
+  }), { responsive: true, displayModeBar: false });
+}
+
+// ─────────────────────────────────────────────
+//  Module 4: Investment Score
+// ─────────────────────────────────────────────
+function renderScore(data) {
+  const s = data.score;
+  const t = data.ticker;
+
+  const scoreColor = s.composite >= 65 ? '#22c55e' : s.composite >= 45 ? '#f59e0b' : '#ef4444';
+  const verdictClass = s.verdict_class === 'positive' ? 'pos' : s.verdict_class === 'negative' ? 'neg' : 'amb';
+
+  const componentLabels = {
+    valuation: 'Valuation',
+    momentum: 'Momentum',
+    quality: 'Quality',
+    risk_adjusted: 'Risk-Adjusted Return',
+    factor: 'Factor Attractiveness'
+  };
+
+  document.getElementById('mainContent').innerHTML = `
+    <div class="module-header">
+      <div class="module-title">Investment Score</div>
+      <div class="module-sub">Composite signal synthesising valuation, momentum, quality, and factor analysis</div>
+    </div>
+
+    <div class="ticker-badge">
+      <span class="sym">${t}</span>
+    </div>
+
+    <div class="score-hero">
+      <div class="score-circle" style="border-color:${scoreColor}">
+        <div class="score-number" style="color:${scoreColor}">${s.composite}</div>
+        <div class="score-label">/ 100</div>
+      </div>
+      <div class="score-verdict">
+        <div class="verdict-text ${verdictClass}">${s.verdict}</div>
+      </div>
+    </div>
+
+    <div class="section-head">Component Scores</div>
+    <div class="score-components">
+      ${Object.entries(s.scores).map(([k, v]) => {
+        const color = v >= 65 ? '#22c55e' : v >= 45 ? '#f59e0b' : '#ef4444';
+        const weight = (s.weights[k] * 100).toFixed(0);
+        return `
+          <div class="score-row">
+            <div class="score-row-label">
+              <span>${componentLabels[k] || k}</span>
+              <span class="score-weight">${weight}%</span>
+            </div>
+            <div class="score-bar-wrap">
+              <div class="score-bar" style="width:${v}%;background:${color}"></div>
+            </div>
+            <div class="score-row-val" style="color:${color}">${v}</div>
+            <div class="score-expl">${s.explanations[k]}</div>
+          </div>`;
+      }).join('')}
+    </div>
+
+    <div class="chart-full"><div class="cc">
+      <div class="cc-t">Score Breakdown</div>
+      <div id="chartScore" class="chart-area"></div>
+    </div></div>
+  `;
+
+  const keys = Object.keys(s.scores);
+  const vals = Object.values(s.scores);
+  Plotly.newPlot('chartScore', [{
+    type: 'scatterpolar',
+    r: [...vals, vals[0]],
+    theta: [...keys.map(k => componentLabels[k] || k), componentLabels[keys[0]] || keys[0]],
+    fill: 'toself',
+    fillcolor: 'rgba(59,130,246,0.15)',
+    line: { color: '#3b82f6' },
+    name: t
+  }], {
+    ...layout(),
+    polar: {
+      radialaxis: { visible: true, range: [0, 100], color: '#475569', gridcolor: '#1a2540' },
+      angularaxis: { color: '#94a3b8' },
+      bgcolor: 'transparent'
+    },
+    margin: { t: 30, r: 60, b: 30, l: 60 }
+  }, { responsive: true, displayModeBar: false });
+}
+</script>
+</body>
+</html>
