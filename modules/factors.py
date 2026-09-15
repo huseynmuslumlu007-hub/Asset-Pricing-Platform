@@ -89,7 +89,10 @@ def run_factors(ticker: str, period: str) -> dict:
     b3, r2_3 = ols(y, X_cols_3)
     b5, r2_5 = ols(y, X_cols_5)
 
-    factor_means = {col: float(combined[col].mean() * 252) for col in X_cols_5}
+    factor_means = {}
+    for col in X_cols_5:
+        col_vals = combined[col].values
+        factor_means[col] = float((np.prod(1 + col_vals) ** (252 / len(col_vals))) - 1)
 
     def contributions(betas, cols):
         return {cols[i]: round(float(betas[i + 1]) * factor_means.get(cols[i], 0), 6)
@@ -98,8 +101,9 @@ def run_factors(ticker: str, period: str) -> dict:
     contrib_3 = contributions(b3, X_cols_3)
     contrib_5 = contributions(b5, X_cols_5)
 
-    alpha_3 = float(b3[0] * 252)
-    alpha_5 = float(b5[0] * 252)
+    # Geometric annualisation of daily alpha intercept
+    alpha_3 = float((1 + b3[0]) ** 252 - 1)
+    alpha_5 = float((1 + b5[0]) ** 252 - 1)
 
     def profile(loadings: dict) -> str:
         tags = []

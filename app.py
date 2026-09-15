@@ -61,7 +61,16 @@ def portfolio():
     if not tickers:
         return jsonify({'error': 'No tickers provided'}), 400
     try:
+        from modules.portfolio import score_portfolio
         result = run_portfolio(tickers, weights, period)
+        port_score = score_portfolio(
+            result["metrics"],
+            result["holdings"],
+            result["min_var_weights"],
+            result["max_sharpe_weights"],
+            result["corr_matrix"]
+        )
+        result["portfolio_score"] = port_score
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500

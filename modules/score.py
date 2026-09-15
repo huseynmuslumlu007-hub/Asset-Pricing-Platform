@@ -41,7 +41,7 @@ def run_score(ticker: str, pricing: dict, factors: dict) -> dict:
         if len(prices) > 20:
             ret_12m = (prices[-1] - prices[0]) / prices[0]
             ret_3m  = (prices[-1] - prices[int(len(prices) * 0.75)]) / prices[int(len(prices) * 0.75)]
-            ret_1m  = (prices[-1] - prices[int(len(prices) * 0.92)]) / prices[int(len(prices) * 0.92)]
+            ret_1m  = (prices[-1] - prices[int(len(prices) * 0.917)]) / prices[int(len(prices) * 0.917)]
 
             mom_score = 50
             mom_score += min(30, max(-30, ret_12m * 100))

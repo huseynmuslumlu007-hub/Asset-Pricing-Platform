@@ -408,7 +408,10 @@ function renderPricing(data) {
   Plotly.newPlot('chartDist', [
     { x: c.dist_labels, y: c.dist_values, type: 'bar',
       marker: { color: c.dist_labels.map(l => parseFloat(l) >= 0 ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.6)') } }
-  ], layout({ xaxis: { ...PLOTLY_LAYOUT.xaxis, title: 'Daily Return %' }, showlegend: false }), { responsive: true, displayModeBar: false });
+  ], layout({
+    xaxis: { ...PLOTLY_LAYOUT.xaxis, title: 'Daily Return %', type: 'linear' },
+    showlegend: false
+  }), { responsive: true, displayModeBar: false });
 
   // Drawdown
   Plotly.newPlot('chartDD', [
@@ -523,11 +526,15 @@ function renderFactors(data) {
   Plotly.newPlot('chartFactors', [{
     x: labels, y: values, type: 'bar', orientation: 'v',
     marker: { color: values.map(v => v >= 0 ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.7)') },
-    text: values.map(v => v.toFixed(2) + '%'), textposition: 'outside'
+    text: values.map(v => v.toFixed(2) + '%'),
+    textposition: values.map(v => Math.abs(v) < 1 ? 'outside' : 'auto'),
+    textfont: { color: '#e2e8f0', size: 11 },
+    cliponaxis: false
   }], layout({
     xaxis: { ...PLOTLY_LAYOUT.xaxis, type: 'category' },
-    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'Contribution (%)' },
-    showlegend: false
+    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'Contribution (%)', autorange: true },
+    showlegend: false,
+    margin: { t: 40, r: 20, b: 60, l: 60 }
   }), { responsive: true, displayModeBar: false });
 
   // R2 comparison
@@ -536,11 +543,14 @@ function renderFactors(data) {
     y: [+(ff3.r2 * 100).toFixed(2), +(ff5.r2 * 100).toFixed(2)],
     type: 'bar',
     marker: { color: ['#3b82f6', '#22c55e'] },
-    text: [ff3.r2.toFixed(3), ff5.r2.toFixed(3)], textposition: 'outside'
+    text: [ff3.r2.toFixed(3), ff5.r2.toFixed(3)],
+    textposition: 'auto',
+    textfont: { color: '#e2e8f0', size: 11 }
   }], layout({
     xaxis: { ...PLOTLY_LAYOUT.xaxis, type: 'category' },
-    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'R² (%)' },
-    showlegend: false
+    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'R² (%)', autorange: true },
+    showlegend: false,
+    margin: { t: 30, r: 20, b: 60, l: 60 }
   }), { responsive: true, displayModeBar: false });
 
   // Loadings bar
@@ -553,6 +563,68 @@ function renderFactors(data) {
     xaxis: { ...PLOTLY_LAYOUT.xaxis, type: 'category' },
     showlegend: false
   }), { responsive: true, displayModeBar: false });
+}
+
+// ─────────────────────────────────────────────
+//  Portfolio Score renderer
+// ─────────────────────────────────────────────
+function renderPortfolioScore(s) {
+  const scoreColor = s.composite >= 65 ? '#22c55e' : s.composite >= 45 ? '#f59e0b' : '#ef4444';
+  const verdictClass = s.verdict_class === 'positive' ? 'pos' : s.verdict_class === 'negative' ? 'neg' : 'amb';
+  const labels = {
+    risk_adjusted: 'Risk-Adjusted Return',
+    alpha: 'Alpha Generation',
+    diversification: 'Diversification',
+    efficiency: 'Weight Efficiency',
+    drawdown: 'Drawdown Control'
+  };
+
+  const recoHTML = s.recommendations.length > 0 ? `
+    <div class="section-head" style="margin-top:20px">Weight Recommendations — vs Maximum Sharpe</div>
+    <div class="reco-grid">
+      ${s.recommendations.map(r => `
+        <div class="reco-card">
+          <div class="reco-ticker">${r.ticker}</div>
+          <div class="reco-action ${r.diff > 0 ? 'pos' : 'neg'}">${r.action}</div>
+          <div class="reco-weights">${r.from}% → ${r.to}%</div>
+          <div class="reco-diff ${r.diff > 0 ? 'pos' : 'neg'}">${r.diff > 0 ? '+' : ''}${r.diff}%</div>
+        </div>`).join('')}
+    </div>` : '<div style="color:var(--muted);font-size:12px;margin-top:8px">Current weights are near-optimal.</div>';
+
+  return `
+    <div class="section-head" style="margin-top:24px">Portfolio Score</div>
+    <div class="score-hero" style="margin-bottom:16px">
+      <div class="score-circle" style="border-color:${scoreColor}">
+        <div class="score-number" style="color:${scoreColor}">${s.composite}</div>
+        <div class="score-label">/ 100</div>
+      </div>
+      <div class="score-verdict">
+        <div class="verdict-text ${verdictClass}">${s.verdict}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">
+          Avg correlation ${s.avg_correlation} · Weights deviate ${s.vs_max_sharpe_diff}% from max-Sharpe optimal
+        </div>
+      </div>
+    </div>
+    <div class="score-components">
+      ${Object.entries(s.scores).map(([k, v]) => {
+        const color = v >= 65 ? '#22c55e' : v >= 45 ? '#f59e0b' : '#ef4444';
+        const weight = (s.weights[k] * 100).toFixed(0);
+        return `
+          <div class="score-row">
+            <div class="score-row-label">
+              <span>${labels[k] || k}</span>
+              <span class="score-weight">${weight}%</span>
+            </div>
+            <div class="score-bar-wrap">
+              <div class="score-bar" style="width:${v}%;background:${color}"></div>
+            </div>
+            <div class="score-row-val" style="color:${color}">${v}</div>
+            <div class="score-expl">${s.explanations[k]}</div>
+          </div>`;
+      }).join('')}
+    </div>
+    ${recoHTML}
+  `;
 }
 
 // ─────────────────────────────────────────────
@@ -636,6 +708,8 @@ function renderPortfolio(data) {
           `<div class="opt-row"><span>${t}</span><span>${(w*100).toFixed(1)}%</span></div>`).join('')}
       </div>
     </div>
+
+    ${data.portfolio_score ? renderPortfolioScore(data.portfolio_score) : ''}
   `;
 
   document.getElementById('portfolioPanel').innerHTML = `<div class="port-results">${portHTML}</div>`;
@@ -731,7 +805,7 @@ function renderScore(data) {
 
     <div class="chart-full"><div class="cc">
       <div class="cc-t">Score Breakdown</div>
-      <div id="chartScore" class="chart-area"></div>
+      <div id="chartScore" style="height:480px"></div>
     </div></div>
   `;
 
@@ -743,16 +817,18 @@ function renderScore(data) {
     theta: [...keys.map(k => componentLabels[k] || k), componentLabels[keys[0]] || keys[0]],
     fill: 'toself',
     fillcolor: 'rgba(59,130,246,0.15)',
-    line: { color: '#3b82f6' },
+    line: { color: '#3b82f6', width: 2 },
+    marker: { size: 6, color: '#3b82f6' },
     name: t
   }], {
     ...layout(),
     polar: {
-      radialaxis: { visible: true, range: [0, 100], color: '#475569', gridcolor: '#1a2540' },
-      angularaxis: { color: '#94a3b8' },
+      radialaxis: { visible: true, range: [0, 100], color: '#475569', gridcolor: '#1a2540', tickfont: { size: 9 } },
+      angularaxis: { color: '#94a3b8', tickfont: { size: 12 } },
       bgcolor: 'transparent'
     },
-    margin: { t: 30, r: 60, b: 30, l: 60 }
+    margin: { t: 100, r: 160, b: 100, l: 160 },
+    height: 450
   }, { responsive: true, displayModeBar: false });
 }
 </script>

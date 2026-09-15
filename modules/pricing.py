@@ -26,15 +26,16 @@ def run_pricing(ticker: str, period: str) -> dict:
     bench_ret = np.diff(bench_prices) / bench_prices[:-1]
 
     try:
-        tnx = yf.download("^TNX", period="5d", progress=False)
-        rf_ann = float(tnx["Close"].dropna().iloc[-1]) / 100
+        tnx = yf.download("^TNX", period="5d", progress=False, auto_adjust=True)
+        rf_ann = float(tnx["Close"].squeeze().dropna().iloc[-1]) / 100
     except Exception:
-        rf_ann = 0.043
+        rf_ann = 0.05
     rf_daily = rf_ann / 252
 
     n = len(stock_ret)
-    ann_stock = float(np.mean(stock_ret) * 252)
-    ann_bench = float(np.mean(bench_ret) * 252)
+    # Geometric annualisation — correct for large returns
+    ann_stock = float((np.prod(1 + stock_ret) ** (252 / n)) - 1)
+    ann_bench = float((np.prod(1 + bench_ret) ** (252 / n)) - 1)
     ann_vol   = float(np.std(stock_ret, ddof=1) * np.sqrt(252))
 
     cov       = np.cov(stock_ret, bench_ret)[0][1]
@@ -49,7 +50,7 @@ def run_pricing(ticker: str, period: str) -> dict:
 
     neg       = excess[excess < 0]
     down_dev  = float(np.sqrt(np.mean(neg ** 2)) * np.sqrt(252)) if len(neg) > 0 else 1e-9
-    sortino   = float(np.mean(excess) * 252 / down_dev)
+    sortino   = float((ann_stock - rf_ann) / down_dev)
 
     treynor   = float((ann_stock - rf_ann) / beta) if beta != 0 else 0
 
