@@ -52,9 +52,15 @@ def get_ff_factors(period: str) -> pd.DataFrame:
     return df
 
 
-def run_factors(ticker: str, period: str) -> dict:
+def run_factors(ticker: str, period: str, end_date: str = None) -> dict:
 
-    stock = yf.download(ticker, period=period, auto_adjust=True, progress=False)
+    if end_date:
+        import pandas as _pd
+        end_dt = _pd.Timestamp(end_date)
+        start_dt = end_dt - _pd.DateOffset(years=1)
+        stock = yf.download(ticker, start=start_dt.strftime('%Y-%m-%d'), end=end_date, auto_adjust=True, progress=False)
+    else:
+        stock = yf.download(ticker, period=period, auto_adjust=True, progress=False)
     if stock.empty:
         raise ValueError(f"No data for {ticker}")
 

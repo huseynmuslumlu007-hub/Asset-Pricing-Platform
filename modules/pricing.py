@@ -3,10 +3,17 @@ import numpy as np
 import pandas as pd
 
 
-def run_pricing(ticker: str, period: str) -> dict:
+def run_pricing(ticker: str, period: str, end_date: str = None) -> dict:
 
-    stock = yf.download(ticker, period=period, auto_adjust=True, progress=False)
-    bench = yf.download("^GSPC", period=period, auto_adjust=True, progress=False)
+    if end_date:
+        import pandas as _pd
+        end_dt = _pd.Timestamp(end_date)
+        start_dt = end_dt - _pd.DateOffset(years=1)
+        stock = yf.download(ticker, start=start_dt.strftime('%Y-%m-%d'), end=end_date, auto_adjust=True, progress=False)
+        bench = yf.download("^GSPC", start=start_dt.strftime('%Y-%m-%d'), end=end_date, auto_adjust=True, progress=False)
+    else:
+        stock = yf.download(ticker, period=period, auto_adjust=True, progress=False)
+        bench = yf.download("^GSPC", period=period, auto_adjust=True, progress=False)
 
     if stock.empty or bench.empty:
         raise ValueError(f"No price data found for {ticker}. Check the ticker symbol.")

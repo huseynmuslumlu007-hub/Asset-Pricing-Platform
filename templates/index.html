@@ -5,13 +5,209 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Equis — Asset Pricing Platform</title>
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-<link rel="stylesheet" href="/static/style.css"/>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#000000;--surface:#1c1c1c;--surface-2:#242424;--border:#2e2e2e;
+  --border-strong:#3d3d3d;--accent:#d1d5db;--accent-soft:rgba(209,213,219,0.12);
+  --positive:#15803d;--negative:#ef4444;--warning:#f59e0b;--text:#f1f5f9;
+  --text-muted:#a0aec0;--muted:#718096;--green:#22c55e;--red:#ef4444;
+  --amber:#f59e0b;--radius:16px;--gap:20px;--sidebar:220px;
+  --mono:'JetBrains Mono','SF Mono',ui-monospace,Menlo,monospace;
+  --sans:'Inter',-apple-system,sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.55;overflow:hidden}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:3px}
+.shell{display:flex;height:100vh}
+.sidebar{width:var(--sidebar);min-width:var(--sidebar);background:var(--surface);border-right:1px solid var(--border);box-shadow:4px 0 24px rgba(0,0,0,0.3);display:flex;flex-direction:column}
+.logo{padding:22px 20px 18px;border-bottom:1px solid var(--border)}
+.logo-name{font-size:18px;font-weight:700;letter-spacing:-0.02em;background:linear-gradient(135deg,#e2e8f0 0%,#94a3b8 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.logo-sub{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-top:3px}
+.nav{padding:12px 10px;flex:1}
+.nav-label{padding:8px 10px 4px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-weight:700}
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;border-radius:10px;border-left:3px solid transparent;transition:all 0.15s ease;margin-bottom:2px;user-select:none}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.05);transform:translateX(2px)}
+.nav-item.active{background:var(--accent);color:#111;border-left-color:rgba(255,255,255,0.5);font-weight:600}
+.nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-icon{opacity:1}
+.sidebar-footer{padding:14px 20px;border-top:1px solid var(--border)}
+.footer-note{font-size:10px;color:var(--muted)}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{height:52px;padding:0 24px;background:rgba(13,15,20,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.search-wrap{position:relative;flex:1;max-width:320px}
+.search-wrap input{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border-strong);border-radius:8px;padding:8px 12px 8px 32px;color:var(--text);font-family:var(--sans);font-size:13px;font-weight:500;outline:none;transition:border-color 0.15s,box-shadow 0.15s,background 0.15s}
+.search-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(209,213,219,0.15);background:rgba(209,213,219,0.05)}
+.search-wrap input::placeholder{color:var(--muted);font-family:var(--sans);font-weight:400}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px}
+.topbar select{background:rgba(255,255,255,0.04);border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;color:var(--text);font-size:12px;font-family:var(--sans);outline:none;cursor:pointer}
+#runBtn{background:var(--accent);color:#111;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);box-shadow:0 2px 8px rgba(0,0,0,0.2);transition:filter 0.15s,transform 0.15s}
+#runBtn:hover{filter:brightness(1.12);transform:translateY(-1px)}
+#runBtn:active{transform:translateY(0)}
+#runBtn:disabled{background:var(--border-strong);color:var(--muted);cursor:not-allowed;filter:none;transform:none}
+#topbarStatus{font-size:11px;color:var(--muted);margin-left:8px;font-family:var(--sans)}
+.content{flex:1;overflow-y:auto;padding:28px}
+.state-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:440px;gap:12px;text-align:center}
+.empty-icon{font-size:52px;color:var(--border-strong)}
+.state-empty p{font-size:14px;color:var(--muted)}
+.state-empty strong{color:var(--text)}
+.empty-sub{font-size:12px;max-width:340px;line-height:1.6}
+.state-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:440px;gap:12px;color:var(--muted)}
+.spinner{width:30px;height:30px;border:2px solid var(--border-strong);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite}
+.loading-sub{font-size:11px;color:var(--muted)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.state-error{background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--radius);padding:16px 20px;color:#fca5a5;font-size:13px;margin-bottom:20px}
+.module-header{margin-bottom:24px}
+.module-title{font-size:22px;font-weight:700;letter-spacing:-0.02em}
+.module-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.ticker-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(209,213,219,0.08);border:1px solid rgba(209,213,219,0.2);border-radius:8px;padding:5px 14px;margin-bottom:22px}
+.sym{font-family:var(--sans);font-weight:700;font-size:15px;color:var(--accent)}
+.badge-sep,.badge-period{font-size:11px;color:var(--muted)}
+.section-head{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:18px;margin-top:10px}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:14px;margin-bottom:26px}
+.mc{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--border-strong);border-radius:var(--radius);padding:18px 20px;cursor:pointer;transition:transform 0.18s ease,box-shadow 0.18s ease,border-top-color 0.18s ease}
+.mc:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.08);border-top-color:rgba(255,255,255,0.5)}
+.mc-l{font-size:10.5px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.mc-v{font-family:var(--sans);font-size:26px;font-weight:600;letter-spacing:-0.5px;line-height:1}
+.mc-s{font-size:11px;color:var(--muted);margin-top:6px}
+.badge{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 8px;border-radius:20px;margin-top:7px}
+.badge-good{background:rgba(34,197,94,0.15);color:#22c55e}
+.badge-neutral{background:rgba(245,158,11,0.15);color:#f59e0b}
+.badge-weak{background:rgba(239,68,68,0.15);color:#ef4444}
+.pos{color:#22c55e}.neg{color:#ef4444}.neu{color:var(--accent)}.amb{color:var(--amber)}
+.chart-full{margin-bottom:14px}
+.charts-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.cc{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--border-strong);border-radius:var(--radius);padding:20px;cursor:pointer;transition:transform 0.18s ease,box-shadow 0.18s ease,border-top-color 0.18s ease}
+.cc:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.08);border-top-color:rgba(255,255,255,0.5)}
+.cc-t{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
+.chart-area{height:220px}
+@keyframes cardIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.js-plotly-plot .plotly .main-svg{pointer-events:none}
+.js-plotly-plot .plotly .main-svg .draglayer{pointer-events:none}
+.js-plotly-plot .plotly .main-svg .hoverlayer{pointer-events:none}
+.js-plotly-plot{cursor:default !important}
+.js-plotly-plot *{cursor:default !important}
+.cc:hover .js-plotly-plot,.mc:hover .js-plotly-plot{cursor:pointer !important}
+.factor-profile-card{background:rgba(209,213,219,0.05);border:1px solid rgba(209,213,219,0.15);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px}
+.fp-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;font-weight:700;flex-shrink:0}
+.fp-value{font-size:13px;color:var(--text);font-weight:500}
+.portfolio-panel{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.port-input-area{padding:24px;border-bottom:1px solid var(--border);background:var(--surface);flex-shrink:0}
+.port-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.port-sub{font-size:12px;color:var(--muted);margin-bottom:16px}
+.port-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.port-ticker{background:rgba(255,255,255,0.04);border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;color:var(--text);font-family:var(--sans);font-size:13px;font-weight:600;width:100px;outline:none;text-transform:uppercase;transition:border-color 0.15s,box-shadow 0.15s}
+.port-weight{background:rgba(255,255,255,0.04);border:1px solid var(--border-strong);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;width:80px;outline:none;transition:border-color 0.15s,box-shadow 0.15s}
+.port-ticker:focus,.port-weight:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(209,213,219,0.15)}
+.btn-remove{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;transition:color 0.15s}
+.btn-remove:hover{color:var(--red)}
+.port-actions{display:flex;gap:10px;margin-top:14px}
+.btn-ghost{background:none;border:1px solid var(--border-strong);border-radius:8px;padding:8px 14px;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--sans);transition:color 0.15s,border-color 0.15s}
+.btn-ghost:hover{color:var(--text);border-color:var(--accent)}
+.btn-primary{background:var(--accent);color:#111;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);box-shadow:0 2px 8px rgba(0,0,0,0.2);transition:filter 0.15s,transform 0.15s}
+.btn-primary:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.btn-primary:disabled{background:var(--border-strong);color:var(--muted);cursor:not-allowed;filter:none;transform:none}
+.port-results{padding:24px;flex:1}
+.holdings-table{width:100%;border-collapse:collapse;margin-bottom:22px;font-size:13px}
+.holdings-table th{text-align:left;padding:10px 12px;font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid var(--border);font-weight:700;background:rgba(255,255,255,0.02)}
+.holdings-table th:not(:first-child){text-align:right}
+.holdings-table td{padding:10px 12px;border-bottom:1px solid var(--border)}
+.holdings-table td:not(:first-child){text-align:right}
+.holdings-table tr:hover td{background:rgba(255,255,255,0.05)}
+.sym-cell{font-family:var(--sans);font-weight:700;color:var(--accent)}
+.opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+.opt-card{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--border-strong);border-radius:var(--radius);padding:18px;transition:transform 0.18s ease,box-shadow 0.18s ease,border-top-color 0.18s ease}
+.opt-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.08);border-top-color:rgba(255,255,255,0.5)}
+.opt-title{font-size:13px;font-weight:700;margin-bottom:3px}
+.opt-sub{font-size:11px;color:var(--muted);margin-bottom:14px}
+.opt-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.opt-row:last-child{border-bottom:none}
+.opt-row span:first-child{font-family:var(--sans);font-weight:600;color:var(--accent)}
+.score-hero{display:flex;align-items:center;gap:32px;margin-bottom:28px;padding:26px;background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--border-strong);border-radius:var(--radius);transition:transform 0.18s ease,box-shadow 0.18s ease;cursor:pointer}
+.score-hero:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.08)}
+.score-circle{width:130px;height:130px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;position:relative}
+.score-number{font-family:var(--sans);font-size:36px;font-weight:600;line-height:1;letter-spacing:-0.5px}
+.score-label{font-size:11px;color:var(--muted);font-family:var(--sans)}
+.verdict-text{font-size:15px;font-weight:600;line-height:1.5}
+.score-components{display:flex;flex-direction:column;gap:16px;margin-bottom:24px}
+.score-row{display:grid;grid-template-columns:200px 1fr 52px;gap:14px;align-items:center}
+.score-row-label{display:flex;justify-content:space-between;font-size:13px;font-weight:500}
+.score-weight{color:var(--muted);font-size:11px}
+.score-bar-wrap{background:var(--border);border-radius:4px;height:7px;overflow:hidden}
+.score-bar{height:100%;border-radius:4px;transition:width 0.8s ease}
+.score-row-val{font-family:var(--sans);font-size:15px;font-weight:600;text-align:right}
+.score-expl{grid-column:1/-1;font-size:11px;color:var(--muted);padding-left:2px}
+.reco-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px}
+.reco-card{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--border-strong);border-radius:var(--radius);padding:14px;text-align:center;transition:transform 0.18s ease,box-shadow 0.18s ease,border-top-color 0.18s ease}
+.reco-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.08);border-top-color:rgba(255,255,255,0.5)}
+.reco-ticker{font-family:var(--sans);font-weight:700;color:var(--accent);font-size:15px;margin-bottom:5px}
+.reco-action{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px}
+.reco-weights{font-family:var(--sans);font-size:13px;color:var(--text);margin-bottom:5px}
+.reco-diff{font-family:var(--sans);font-size:16px;font-weight:600}
+/* Two-panel modal */
+.modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.25s ease;pointer-events:none;padding:20px}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal-inner{display:grid;grid-template-columns:1fr 360px;gap:16px;width:100%;max-width:1300px;max-height:92vh}
+.modal-left{background:var(--surface);border:1px solid var(--border-strong);border-top:2px solid var(--accent);border-radius:var(--radius);padding:28px;overflow-y:auto;max-height:92vh;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+.modal-right{background:var(--surface);border:1px solid var(--border-strong);border-top:2px solid var(--accent);border-radius:var(--radius);padding:24px;overflow-y:auto;max-height:92vh;box-shadow:0 20px 60px rgba(0,0,0,0.6)}
+.modal-close{position:absolute;top:16px;right:16px;background:none;border:1px solid var(--border-strong);border-radius:6px;color:var(--muted);font-size:13px;cursor:pointer;padding:4px 10px;transition:color 0.15s,border-color 0.15s;z-index:10}
+.modal-close:hover{color:var(--text);border-color:var(--accent)}
+.modal-left-title{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.modal-right-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
+.explain-card{background:#1a2030;border:1px solid var(--border-strong);border-top:2px solid var(--accent);border-radius:12px;padding:20px;margin-bottom:12px;cursor:pointer;transition:transform 0.18s ease,box-shadow 0.18s ease;animation:cardIn 0.3s ease forwards;opacity:0}
+.explain-card:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.3)}
+.explain-card-label{font-size:12px;text-transform:uppercase;color:#64748b;letter-spacing:0.8px;margin-bottom:8px;font-weight:700}
+.explain-card-value{font-size:20px;font-weight:600;font-family:var(--sans);margin-bottom:10px;letter-spacing:-0.3px}
+.explain-card-text{font-size:14px;color:#94a3b8;line-height:1.8}
+.card-popup{position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s ease;pointer-events:none;padding:40px}
+.card-popup.open{opacity:1;pointer-events:all}
+.card-popup-box{background:#1a2030;border:1px solid var(--border-strong);border-top:2px solid var(--accent);border-radius:var(--radius);padding:52px;max-width:640px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.8)}
+.card-popup-label{font-size:12px;text-transform:uppercase;color:#64748b;letter-spacing:1px;margin-bottom:12px;font-weight:700}
+.card-popup-value{font-size:32px;font-weight:600;font-family:var(--sans);margin-bottom:16px;letter-spacing:-0.5px}
+.card-popup-text{font-size:18px;color:#94a3b8;line-height:1.8}
+@media(max-width:900px){.charts-2col{grid-template-columns:1fr}.opt-grid{grid-template-columns:1fr}.score-row{grid-template-columns:140px 1fr 40px}.modal-inner{grid-template-columns:1fr}}
+@media(max-width:640px){.sidebar{display:none}.metrics-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ── Compare module ── */
+.compare-panel{flex:1;display:flex;flex-direction:column;min-height:0}
+.compare-topbar{padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0}
+.compare-mode-toggle{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px;gap:3px}
+.mode-btn{background:none;border:none;color:var(--muted);font-size:13px;font-weight:500;padding:6px 14px;border-radius:6px;cursor:pointer;font-family:var(--sans);transition:all 0.15s}
+.mode-btn.active{background:var(--accent);color:#111;font-weight:600}
+.topbar-sel{background:rgba(255,255,255,0.04);border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;font-family:var(--sans);outline:none}
+.compare-run-btn{background:var(--accent);color:#111;border:none;border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);transition:filter 0.15s,transform 0.15s;margin-left:auto}
+.compare-run-btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.compare-run-btn:disabled{background:var(--border-strong);color:var(--muted);cursor:not-allowed;filter:none;transform:none}
+.compare-inputs{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);flex-shrink:0;min-height:0}
+.compare-input-side{background:var(--bg);padding:20px 24px}
+.compare-input-label{font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px}
+.compare-ticker-input{width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border-strong);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--sans);font-size:15px;font-weight:600;outline:none;text-transform:uppercase;transition:border-color 0.15s,box-shadow 0.15s;letter-spacing:0.05em}
+.compare-ticker-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(209,213,219,0.15)}
+.compare-ticker-input::placeholder{color:var(--muted);text-transform:none;font-weight:400;letter-spacing:0;font-size:13px}
+.compare-results{flex:1;overflow-y:auto;min-height:0;padding:0}
+.compare-unified-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin-bottom:1px}
+.compare-side{background:var(--bg);padding:24px}
+.compare-table-wrap{background:var(--bg);padding:24px;border-top:1px solid var(--border);overflow-x:auto}
+.compare-side-title{font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.cmp-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px}
+.cmp-score-row{display:flex;align-items:center;gap:20px;margin-bottom:20px}
+/* Comparison table */
+.cmp-table{width:100%;border-collapse:collapse;font-size:13px}
+.cmp-table-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.cmp-table-sub{font-size:12px;color:var(--muted);margin-bottom:16px}
+.cmp-table th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.8px;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.02)}
+.cmp-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+.cmp-table tr:hover td{background:rgba(255,255,255,0.03)}
+.cmp-winner{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(34,197,94,0.15);color:#22c55e;margin-left:6px}
+.cmp-explain{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5}
+/* Port compare inputs */
+.port-compare-rows{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+</style>
 </head>
 <body>
-
 <div class="shell">
-
-  <!-- ── Sidebar ── -->
   <nav class="sidebar">
     <div class="logo">
       <div class="logo-name">Equis</div>
@@ -20,32 +216,33 @@
     <div class="nav">
       <div class="nav-label">Modules</div>
       <div class="nav-item active" id="nav-pricing" onclick="switchModule('pricing')">
-        <span class="nav-dot"></span> Asset Pricing
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Asset Pricing
       </div>
       <div class="nav-item" id="nav-factors" onclick="switchModule('factors')">
-        <span class="nav-dot"></span> Factor Analysis
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8h4M11 8h4M8 1v4M8 11v4"/><circle cx="8" cy="8" r="3"/></svg>
+        Factor Analysis
       </div>
       <div class="nav-item" id="nav-portfolio" onclick="switchModule('portfolio')">
-        <span class="nav-dot"></span> Portfolio
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12l4-4 3 3 5-6"/></svg>
+        Portfolio
       </div>
       <div class="nav-item" id="nav-score" onclick="switchModule('score')">
-        <span class="nav-dot"></span> Investment Score
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="8,1 10,6 15,6 11,9 13,14 8,11 3,14 5,9 1,6 6,6"/></svg>
+        Investment Score
+      </div>
+      <div class="nav-item" id="nav-compare" onclick="switchModule('compare')">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 8h14M8 1v14"/></svg>
+        Compare
       </div>
     </div>
-    <div class="sidebar-footer">
-      <div class="footer-note">Data: yfinance · FF Library</div>
-    </div>
+    <div class="sidebar-footer"><div class="footer-note">Data: yfinance · FF Library</div></div>
   </nav>
-
-  <!-- ── Main ── -->
   <div class="main">
-
-    <!-- Topbar -->
     <div class="topbar">
       <div class="search-wrap">
         <span class="search-icon">⌕</span>
-        <input id="tickerInput" type="text" placeholder="Ticker — e.g. AAPL, NVDA, MSFT"
-               autocomplete="off" onkeydown="if(event.key==='Enter') runAnalysis()"/>
+        <input id="tickerInput" type="text" placeholder="Ticker — AAPL, NVDA, MSFT" autocomplete="off" onkeydown="if(event.key==='Enter') runAnalysis()"/>
       </div>
       <select id="periodSelect">
         <option value="1y">1 Year</option>
@@ -56,17 +253,13 @@
       <button id="runBtn" onclick="runAnalysis()">Analyse</button>
       <div id="topbarStatus"></div>
     </div>
-
-    <!-- Content -->
     <div class="content" id="mainContent">
       <div class="state-empty">
         <div class="empty-icon">◈</div>
         <p>Enter a US stock ticker and press <strong>Analyse</strong></p>
-        <p class="empty-sub">Runs CAPM pricing, Fama-French factor decomposition, and Investment Score simultaneously</p>
+        <p class="empty-sub">CAPM pricing · Fama-French factors · Investment Score</p>
       </div>
     </div>
-
-    <!-- Portfolio panel (separate input) -->
     <div class="portfolio-panel" id="portfolioPanel" style="display:none">
       <div class="port-input-area">
         <div class="port-title">Portfolio Builder</div>
@@ -78,758 +271,1427 @@
         </div>
       </div>
     </div>
+    <!-- Compare Panel -->
+    <div class="compare-panel" id="comparePanel" style="display:none">
+      <div class="compare-topbar">
+        <div class="compare-mode-toggle">
+          <button class="mode-btn active" id="modeStocks" onclick="setCompareMode('stocks')">Stock Comparison</button>
+          <button class="mode-btn" id="modePortfolios" onclick="setCompareMode('portfolios')">Portfolio Comparison</button>
+        </div>
+        <select id="comparePeriod" class="topbar-sel">
+          <option value="1y">1 Year</option>
+          <option value="2y" selected>2 Years</option>
+          <option value="3y">3 Years</option>
+          <option value="5y">5 Years</option>
+        </select>
+        <button class="compare-run-btn" id="compareRunBtn" onclick="runCompare()">Run Comparison</button>
+      </div>
+      <div class="compare-inputs" id="compareInputs"></div>
+      <div class="compare-results" id="compareResults" style="display:none">
+        <div id="compareUnified"></div>
+        <div class="compare-table-wrap" id="compareTableWrap"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
+
+<!-- Two-panel Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal-inner">
+    <div class="modal-left" id="modalLeft">
+      <button class="modal-close" onclick="closeModalDirect()">✕ Close</button>
+      <div class="modal-left-title" id="modalLeftTitle"></div>
+      <div id="modalLeftContent"></div>
+    </div>
+    <div class="modal-right" id="modalRight">
+      <div class="modal-right-label">Explanation</div>
+      <div id="modalCards"></div>
+    </div>
+  </div>
+</div>
+<!-- Card popup -->
+<div class="card-popup" id="cardPopup" onclick="closeCardPopup(event)">
+  <div class="card-popup-box">
+    <div class="card-popup-label" id="cardPopupLabel"></div>
+    <div class="card-popup-value" id="cardPopupValue"></div>
+    <div class="card-popup-text" id="cardPopupText"></div>
   </div>
 </div>
 
 <script>
-// ─────────────────────────────────────────────
-//  State
-// ─────────────────────────────────────────────
-let state = { ticker: null, period: null, data: null, portData: null };
-let currentModule = 'pricing';
+'use strict';
 
 // ─────────────────────────────────────────────
-//  Module switching
+//  Compare Module
 // ─────────────────────────────────────────────
-function switchModule(mod) {
-  currentModule = mod;
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  document.getElementById('nav-' + mod).classList.add('active');
+let compareMode = 'stocks';
+let compareData = null;
 
-  const panel = document.getElementById('portfolioPanel');
-  const content = document.getElementById('mainContent');
+function setCompareMode(mode) {
+  compareMode = mode;
+  document.getElementById('modeStocks').classList.toggle('active', mode === 'stocks');
+  document.getElementById('modePortfolios').classList.toggle('active', mode === 'portfolios');
+  document.getElementById('compareResults').style.display = 'none';
+  renderCompareInputs();
+}
 
-  if (mod === 'portfolio') {
-    panel.style.display = 'flex';
-    content.style.display = 'none';
-    if (!document.getElementById('portRows').children.length) {
-      addPortRow(); addPortRow(); addPortRow();
-    }
-    if (state.portData) renderPortfolio(state.portData);
+function renderCompareInputs() {
+  const el = document.getElementById('compareInputs');
+  if (compareMode === 'stocks') {
+    el.innerHTML = `
+      <div class="compare-input-side">
+        <div class="compare-input-label">Stock A</div>
+        <input id="cmpTicker1" class="compare-ticker-input" type="text" placeholder="e.g. AAPL" autocomplete="off"/>
+      </div>
+      <div class="compare-input-side">
+        <div class="compare-input-label">Stock B</div>
+        <input id="cmpTicker2" class="compare-ticker-input" type="text" placeholder="e.g. NVDA" autocomplete="off"/>
+      </div>`;
   } else {
-    panel.style.display = 'none';
-    content.style.display = 'block';
-    if (mod === 'pricing') {
-      if (!state.pricing) renderEmpty();
-      else renderPricing(state.pricing);
-    } else if (mod === 'factors') {
-      loadFactors();
-    } else if (mod === 'score') {
-      loadScore();
-    }
+    el.innerHTML = `
+      <div class="compare-input-side">
+        <div class="compare-input-label">Portfolio A</div>
+        <div id="cmpPortRowsLeft" class="port-compare-rows"></div>
+        <button class="btn-ghost" style="margin-top:8px;font-size:12px" onclick="addCmpPortRow('Left')">+ Add ticker</button>
+      </div>
+      <div class="compare-input-side">
+        <div class="compare-input-label">Portfolio B</div>
+        <div id="cmpPortRowsRight" class="port-compare-rows"></div>
+        <button class="btn-ghost" style="margin-top:8px;font-size:12px" onclick="addCmpPortRow('Right')">+ Add ticker</button>
+      </div>`;
+    addCmpPortRow('Left'); addCmpPortRow('Left'); addCmpPortRow('Left');
+    addCmpPortRow('Right'); addCmpPortRow('Right'); addCmpPortRow('Right');
   }
 }
 
-// ─────────────────────────────────────────────
-//  Run analysis
-// ─────────────────────────────────────────────
-async function runAnalysis() {
-  const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
-  const period = document.getElementById('periodSelect').value;
-  if (!ticker) return;
-
-  const btn = document.getElementById('runBtn');
-  btn.disabled = true;
-  btn.textContent = 'Loading…';
-  setStatus('Fetching data…');
-  renderLoading();
-
-  try {
-    const res = await fetch('/api/analyse', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticker, period })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-
-    state.ticker = ticker;
-    state.period = period;
-    state.pricing = data;
-    state.factors = null;
-    state.scoreData = null;
-
-    setStatus(`${ticker} · ${period}`);
-    if (currentModule === 'pricing') renderPricing(data);
-    else if (currentModule === 'factors') loadFactors();
-    else if (currentModule === 'score') loadScore();
-
-  } catch (err) {
-    renderError(err.message);
-    setStatus('');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Analyse';
-  }
-}
-
-async function loadFactors() {
-  if (!state.ticker) { renderEmpty(); return; }
-  if (state.factors) { renderFactors(state.factors); return; }
-  renderLoading();
-  try {
-    const res = await fetch('/api/factors', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticker: state.ticker, period: state.period })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    state.factors = data;
-    renderFactors(data);
-  } catch(err) { renderError(err.message); }
-}
-
-async function loadScore() {
-  if (!state.ticker) { renderEmpty(); return; }
-  if (state.scoreData) { renderScore(state.scoreData); return; }
-  renderLoading();
-  try {
-    const res = await fetch('/api/score', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticker: state.ticker, period: state.period })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    state.scoreData = data;
-    renderScore(data);
-  } catch(err) { renderError(err.message); }
-}
-
-// ─────────────────────────────────────────────
-//  Portfolio
-// ─────────────────────────────────────────────
-function addPortRow() {
-  const rows = document.getElementById('portRows');
-  if (rows.children.length >= 15) return;
+function addCmpPortRow(side) {
+  const rows = document.getElementById('cmpPortRows' + side);
+  if (!rows || rows.children.length >= 10) return;
   const div = document.createElement('div');
   div.className = 'port-row';
-  div.innerHTML = `
-    <input type="text" placeholder="Ticker" class="port-ticker" maxlength="10"/>
-    <input type="number" placeholder="Weight %" class="port-weight" min="0" max="100" step="0.1"/>
-    <button class="btn-remove" onclick="this.parentElement.remove()">×</button>`;
+  div.innerHTML = '<input type="text" placeholder="Ticker" class="port-ticker" maxlength="10"/><input type="number" placeholder="Weight %" class="port-weight" min="0" max="100" step="0.1"/><button class="btn-remove" onclick="this.parentElement.remove()">×</button>';
   rows.appendChild(div);
 }
 
-async function runPortfolio() {
-  const rows = document.querySelectorAll('.port-row');
-  const tickers = [], weights = [];
-  rows.forEach(r => {
-    const t = r.querySelector('.port-ticker').value.trim().toUpperCase();
-    const w = parseFloat(r.querySelector('.port-weight').value);
-    if (t) { tickers.push(t); weights.push(isNaN(w) ? 0 : w / 100); }
-  });
-  if (tickers.length < 2) { alert('Add at least 2 tickers.'); return; }
-
-  const period = document.getElementById('periodSelect').value;
-  const btn = document.querySelector('.btn-primary');
+async function runCompare() {
+  const btn = document.getElementById('compareRunBtn');
   btn.disabled = true; btn.textContent = 'Loading…';
+  const period = document.getElementById('comparePeriod').value;
 
   try {
-    const res = await fetch('/api/portfolio', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tickers, weights, period })
-    });
-    const data = await res.json();
-    if (data.error) throw new Error(data.error);
-    state.portData = data;
-    renderPortfolio(data);
-  } catch (err) {
-    alert('Error: ' + err.message);
+    if (compareMode === 'stocks') {
+      const t1 = document.getElementById('cmpTicker1').value.trim().toUpperCase();
+      const t2 = document.getElementById('cmpTicker2').value.trim().toUpperCase();
+      if (!t1 || !t2) { alert('Enter both tickers.'); return; }
+
+      document.getElementById('compareResults').style.display = 'block';
+      document.getElementById('compareUnified').innerHTML = '<div class="compare-unified-grid"><div class="compare-side"><div class="state-loading"><div class="spinner"></div><div>Analysing ' + t1 + '…</div></div></div><div class="compare-side"><div class="state-loading"><div class="spinner"></div><div>Analysing ' + t2 + '…</div></div></div></div>';
+      document.getElementById('compareTableWrap').innerHTML = '';
+
+      const res = await fetch('/api/compare/stocks', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ticker1: t1, ticker2: t2, period})
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      compareData = data;
+      document.getElementById('compareUnified').innerHTML = '<div class="compare-unified-grid"><div class="compare-side" id="compareLeft"></div><div class="compare-side" id="compareRight"></div></div>';
+      renderStockCompareSide('compareLeft', data.left);
+      renderStockCompareSide('compareRight', data.right);
+      renderStockCompareTable(data.left, data.right);
+
+    } else {
+      const getRows = (side) => {
+        const rows = document.querySelectorAll('#cmpPortRows' + side + ' .port-row');
+        const out = [];
+        rows.forEach(r => {
+          const t = r.querySelector('.port-ticker').value.trim().toUpperCase();
+          const w = parseFloat(r.querySelector('.port-weight').value);
+          if (t) out.push({ticker: t, weight: isNaN(w) ? 0 : w / 100});
+        });
+        return out;
+      };
+      const left = getRows('Left'), right = getRows('Right');
+      if (left.length < 2 || right.length < 2) { alert('Each portfolio needs at least 2 tickers.'); return; }
+
+      document.getElementById('compareResults').style.display = 'block';
+      document.getElementById('compareUnified').innerHTML = '<div class="compare-unified-grid"><div class="compare-side"><div class="state-loading"><div class="spinner"></div><div>Analysing Portfolio A…</div></div></div><div class="compare-side"><div class="state-loading"><div class="spinner"></div><div>Analysing Portfolio B…</div></div></div></div>';
+      document.getElementById('compareTableWrap').innerHTML = '';
+
+      const res = await fetch('/api/compare/portfolios', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({left, right, period})
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      compareData = data;
+      document.getElementById('compareUnified').innerHTML = '<div class="compare-unified-grid"><div class="compare-side" id="compareLeft"></div><div class="compare-side" id="compareRight"></div></div>';
+      renderPortCompareSide('compareLeft', data.left, 'A');
+      renderPortCompareSide('compareRight', data.right, 'B');
+      renderPortCompareTable(data.left, data.right);
+    }
+  } catch(err) {
+    document.getElementById('compareLeft').innerHTML = '<div class="state-error">⚠ ' + err.message + '</div>';
+    document.getElementById('compareRight').innerHTML = '';
   } finally {
-    btn.disabled = false; btn.textContent = 'Run Portfolio Analysis';
+    btn.disabled = false; btn.textContent = 'Run Comparison';
   }
 }
 
-// ─────────────────────────────────────────────
-//  Helpers
-// ─────────────────────────────────────────────
-function setStatus(msg) {
-  document.getElementById('topbarStatus').textContent = msg;
-}
-function pct(v) { return (v >= 0 ? '+' : '') + (v * 100).toFixed(2) + '%'; }
-function fix2(v) { return parseFloat(v).toFixed(2); }
-function fix3(v) { return parseFloat(v).toFixed(3); }
-function cls(v)  { return v >= 0 ? 'pos' : 'neg'; }
+// ── Stock compare side ────────────────────────────────────────────────────────
+function renderStockCompareSide(elId, d) {
+  const m = d.pricing.metrics, f = d.factors.ff5, s = d.score, t = d.ticker;
+  const sc = s.composite >= 75 ? '#22c55e' : s.composite >= 60 ? '#22c55e' : s.composite >= 45 ? '#f59e0b' : '#ef4444';
+  const fN = {MKT_RF:'Market',SMB:'Size',HML:'Value',RMW:'Profitability',CMA:'Investment'};
+  const el = document.getElementById(elId);
+  el.innerHTML = `
+    <div class="compare-side-title">${t}</div>
 
-function renderEmpty() {
-  document.getElementById('mainContent').innerHTML = `
-    <div class="state-empty">
-      <div class="empty-icon">◈</div>
-      <p>Enter a US stock ticker and press <strong>Analyse</strong></p>
-      <p class="empty-sub">Runs CAPM pricing, Fama-French factor decomposition, and Investment Score simultaneously</p>
-    </div>`;
-}
-
-function renderLoading() {
-  document.getElementById('mainContent').innerHTML = `
-    <div class="state-loading">
-      <div class="spinner"></div>
-      <div>Fetching price data and running analysis…</div>
-      <div class="loading-sub">This takes 10–20 seconds — downloading FF factors on first run</div>
-    </div>`;
-}
-
-function renderError(msg) {
-  document.getElementById('mainContent').innerHTML = `
-    <div class="state-error">⚠ ${msg}</div>`;
-}
-
-const PLOTLY_LAYOUT = {
-  paper_bgcolor: 'transparent',
-  plot_bgcolor:  'transparent',
-  font:  { color: '#94a3b8', size: 11, family: 'Inter, sans-serif' },
-  margin: { t: 10, r: 20, b: 40, l: 50 },
-  xaxis: { gridcolor: '#1a2540', linecolor: '#1a2540', zerolinecolor: '#1a2540' },
-  yaxis: { gridcolor: '#1a2540', linecolor: '#1a2540', zerolinecolor: '#1a2540' },
-  legend: { bgcolor: 'transparent', font: { size: 11 } },
-  hovermode: 'x unified'
-};
-
-function layout(overrides = {}) {
-  return Object.assign({}, PLOTLY_LAYOUT, overrides);
-}
-
-// ─────────────────────────────────────────────
-//  Module 1: Asset Pricing
-// ─────────────────────────────────────────────
-function renderPricing(data) {
-  const m = data.pricing.metrics;
-  const c = data.pricing.charts;
-  const t = data.ticker;
-
-  document.getElementById('mainContent').innerHTML = `
-    <div class="module-header">
-      <div class="module-title">Asset Pricing Engine</div>
-      <div class="module-sub">CAPM analysis · risk-adjusted performance · return attribution</div>
+    <div class="cmp-score-row">
+      ${scoreArc(s.composite, sc)}
+      <div>
+        <div style="font-size:13px;font-weight:600;color:${sc};margin-bottom:4px">${s.verdict}</div>
+        <div style="font-size:11px;color:var(--muted)">Investment Score</div>
+      </div>
     </div>
 
-    <div class="ticker-badge">
-      <span class="sym">${t}</span>
-      <span class="badge-sep">vs S&P 500</span>
-      <span class="badge-period">${state.period}</span>
-    </div>
-
-    <div class="section-head">Risk & Return Metrics</div>
-    <div class="metrics-grid">
-      <div class="mc"><div class="mc-l">Beta</div>
-        <div class="mc-v ${m.beta > 1.2 ? 'neg' : m.beta < 0.8 ? 'pos' : 'neu'}">${fix3(m.beta)}</div>
-        <div class="mc-s">${m.beta > 1 ? 'Higher' : 'Lower'} systematic risk</div></div>
-
-      <div class="mc"><div class="mc-l">Realised Return</div>
+    <div class="section-head">Pricing Metrics</div>
+    <div class="cmp-metrics">
+      <div class="mc" onclick='showMetric("beta","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Beta</div>
+        <div class="mc-v ${m.beta>1.2?'neg':m.beta<0.8?'pos':'neu'}">${fix3(m.beta)}</div>
+      </div>
+      <div class="mc" onclick='showMetric("return","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Return (Ann.)</div>
         <div class="mc-v ${cls(m.ann_return)}">${pct(m.ann_return)}</div>
-        <div class="mc-s">Market: ${pct(m.bench_return)}</div></div>
-
-      <div class="mc"><div class="mc-l">CAPM Expected</div>
-        <div class="mc-v neu">${pct(m.capm_exp)}</div>
-        <div class="mc-s">Rf ${pct(m.rf_ann)} + β·ERP</div></div>
-
-      <div class="mc"><div class="mc-l">Jensen's Alpha</div>
+      </div>
+      <div class="mc" onclick='showMetric("alpha","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Alpha</div>
         <div class="mc-v ${cls(m.alpha)}">${pct(m.alpha)}</div>
-        <div class="mc-s">Return above CAPM</div></div>
-
-      <div class="mc"><div class="mc-l">Sharpe Ratio</div>
-        <div class="mc-v ${m.sharpe > 1 ? 'pos' : m.sharpe > 0 ? 'amb' : 'neg'}">${fix2(m.sharpe)}</div>
-        <div class="mc-s">Return per unit total risk</div></div>
-
-      <div class="mc"><div class="mc-l">Sortino Ratio</div>
-        <div class="mc-v ${m.sortino > 1 ? 'pos' : m.sortino > 0 ? 'amb' : 'neg'}">${fix2(m.sortino)}</div>
-        <div class="mc-s">Return per unit downside risk</div></div>
-
-      <div class="mc"><div class="mc-l">Treynor Ratio</div>
-        <div class="mc-v ${m.treynor > 0 ? 'pos' : 'neg'}">${fix2(m.treynor)}</div>
-        <div class="mc-s">Return per unit systematic risk</div></div>
-
-      <div class="mc"><div class="mc-l">Volatility (Ann.)</div>
-        <div class="mc-v ${m.ann_vol > 0.35 ? 'neg' : m.ann_vol > 0.2 ? 'amb' : 'pos'}">${pct(m.ann_vol)}</div>
-        <div class="mc-s">Annualised price risk</div></div>
-
-      <div class="mc"><div class="mc-l">Max Drawdown</div>
-        <div class="mc-v neg">-${(m.max_dd * 100).toFixed(2)}%</div>
-        <div class="mc-s">Worst peak-to-trough loss</div></div>
-
-      <div class="mc"><div class="mc-l">VaR 95%</div>
-        <div class="mc-v neg">-${(m.var95 * 100).toFixed(2)}%</div>
-        <div class="mc-s">Daily tail loss (5% of days)</div></div>
-
-      <div class="mc"><div class="mc-l">VaR 99%</div>
-        <div class="mc-v neg">-${(m.var99 * 100).toFixed(2)}%</div>
-        <div class="mc-s">Daily tail loss (1% of days)</div></div>
-
-      <div class="mc"><div class="mc-l">Information Ratio</div>
-        <div class="mc-v ${m.ir > 0.5 ? 'pos' : m.ir > 0 ? 'amb' : 'neg'}">${fix2(m.ir)}</div>
-        <div class="mc-s">Active return vs tracking error</div></div>
-    </div>
-
-    <div class="section-head">Visual Analysis</div>
-    <div class="chart-full"><div class="cc">
-      <div class="cc-t">Price Performance — ${t} vs S&P 500 (rebased to 100)</div>
-      <div id="chartPerf" class="chart-area"></div>
-    </div></div>
-
-    <div class="charts-2col">
-      <div class="cc">
-        <div class="cc-t">Rolling 60-Day Beta</div>
-        <div id="chartBeta" class="chart-area"></div>
       </div>
-      <div class="cc">
-        <div class="cc-t">Daily Return Distribution</div>
-        <div id="chartDist" class="chart-area"></div>
+      <div class="mc" onclick='showMetric("sharpe","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Sharpe</div>
+        <div class="mc-v ${m.sharpe>1?'pos':m.sharpe>0.5?'amb':'neg'}">${fix2(m.sharpe)}</div>
+      </div>
+      <div class="mc" onclick='showMetric("sortino","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Sortino</div>
+        <div class="mc-v ${m.sortino>1?'pos':m.sortino>0.5?'amb':'neg'}">${fix2(m.sortino)}</div>
+      </div>
+      <div class="mc" onclick='showMetric("vol","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Volatility</div>
+        <div class="mc-v ${m.ann_vol>0.35?'neg':m.ann_vol>0.2?'amb':'pos'}">${pct(m.ann_vol)}</div>
+      </div>
+      <div class="mc" onclick='showMetric("drawdown","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Max Drawdown</div>
+        <div class="mc-v neg">-${(m.max_dd*100).toFixed(2)}%</div>
+      </div>
+      <div class="mc" onclick='showMetric("var95","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">VaR 95%</div>
+        <div class="mc-v neg">-${(m.var95*100).toFixed(2)}%</div>
+      </div>
+      <div class="mc" onclick='showMetric("ir","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Info Ratio</div>
+        <div class="mc-v ${m.ir>0.5?'pos':m.ir>0?'amb':'neg'}">${fix2(m.ir)}</div>
       </div>
     </div>
 
-    <div class="chart-full"><div class="cc">
-      <div class="cc-t">Drawdown Over Time</div>
-      <div id="chartDD" class="chart-area"></div>
-    </div></div>
-
-    <div class="chart-full"><div class="cc">
-      <div class="cc-t">CAPM Security Market Line — Where does ${t} sit?</div>
-      <div id="chartSML" class="chart-area" style="height:320px"></div>
-    </div></div>
-  `;
-
-  // Performance chart
-  Plotly.newPlot('chartPerf', [
-    { x: c.dates, y: c.stock_rebased, name: t, line: { color: '#3b82f6', width: 2 }, type: 'scatter' },
-    { x: c.dates, y: c.bench_rebased, name: 'S&P 500', line: { color: '#475569', width: 1.5, dash: 'dot' }, type: 'scatter' }
-  ], layout(), { responsive: true, displayModeBar: false });
-
-  // Rolling beta
-  Plotly.newPlot('chartBeta', [
-    { x: c.roll_dates, y: c.roll_betas, name: 'Beta', line: { color: '#a78bfa', width: 1.5 }, type: 'scatter' },
-    { x: [c.roll_dates[0], c.roll_dates[c.roll_dates.length-1]], y: [1, 1], name: 'β=1', line: { color: '#334155', dash: 'dot', width: 1 }, type: 'scatter' }
-  ], layout(), { responsive: true, displayModeBar: false });
-
-  // Distribution
-  Plotly.newPlot('chartDist', [
-    { x: c.dist_labels, y: c.dist_values, type: 'bar',
-      marker: { color: c.dist_labels.map(l => parseFloat(l) >= 0 ? 'rgba(34,197,94,0.6)' : 'rgba(239,68,68,0.6)') } }
-  ], layout({
-    xaxis: { ...PLOTLY_LAYOUT.xaxis, title: 'Daily Return %', type: 'linear' },
-    showlegend: false
-  }), { responsive: true, displayModeBar: false });
-
-  // Drawdown
-  Plotly.newPlot('chartDD', [
-    { x: c.dd_dates, y: c.dd_series, fill: 'tozeroy',
-      fillcolor: 'rgba(239,68,68,0.1)', line: { color: '#ef4444', width: 1.5 }, type: 'scatter', showlegend: false }
-  ], layout({ yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'Drawdown %' } }), { responsive: true, displayModeBar: false });
-
-  // SML
-  Plotly.newPlot('chartSML', [
-    { x: c.sml_betas, y: c.sml_returns.map(v => v * 100), name: 'Security Market Line',
-      line: { color: '#334155', dash: 'dot', width: 1.5 }, type: 'scatter' },
-    { x: [c.stock_beta], y: [c.stock_return * 100], name: `${t} (actual)`,
-      mode: 'markers', marker: { color: m.alpha >= 0 ? '#22c55e' : '#ef4444', size: 12 } },
-    { x: [c.stock_beta], y: [c.capm_return * 100], name: 'CAPM predicted',
-      mode: 'markers', marker: { color: '#3b82f6', size: 10, symbol: 'triangle-up' } }
-  ], layout({
-    xaxis: { ...PLOTLY_LAYOUT.xaxis, title: 'Beta', type: 'linear' },
-    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'Annualised Return (%)' },
-    hovermode: 'closest'
-  }), { responsive: true, displayModeBar: false });
-}
-
-// ─────────────────────────────────────────────
-//  Module 2: Factor Analysis
-// ─────────────────────────────────────────────
-function renderFactors(data) {
-  const f = data.factors;
-  const ff5 = f.ff5;
-  const ff3 = f.ff3;
-  const t = data.ticker;
-
-  const factorNames = { MKT_RF: 'Market (MKT-RF)', SMB: 'Size (SMB)', HML: 'Value (HML)', RMW: 'Profitability (RMW)', CMA: 'Investment (CMA)' };
-
-  document.getElementById('mainContent').innerHTML = `
-    <div class="module-header">
-      <div class="module-title">Factor Analysis Engine</div>
-      <div class="module-sub">Fama-French 3 & 5 factor decomposition · return attribution</div>
-    </div>
-
-    <div class="ticker-badge">
-      <span class="sym">${t}</span>
-      <span class="badge-sep">Fama-French 5-Factor</span>
-    </div>
-
-    <div class="section-head">Factor Loadings — FF5 Model</div>
-    <div class="metrics-grid">
-      ${Object.entries(ff5.loadings).map(([k, v]) => `
-        <div class="mc">
-          <div class="mc-l">${factorNames[k] || k}</div>
-          <div class="mc-v ${v > 0 ? 'pos' : 'neg'}">${fix3(v)}</div>
-          <div class="mc-s">Factor beta</div>
+    <div class="section-head">Factor Profile (FF5)</div>
+    <div class="cmp-metrics">
+      ${Object.entries(f.loadings).map(([k,v])=>`
+        <div class="mc" onclick='showFactor("${k}","${t}",${JSON.stringify(f)})'>
+          <div class="mc-l">${fN[k]||k}</div>
+          <div class="mc-v ${v>0?'pos':'neg'}">${fix3(v)}</div>
         </div>`).join('')}
-      <div class="mc">
-        <div class="mc-l">R² (FF5)</div>
-        <div class="mc-v neu">${(ff5.r2 * 100).toFixed(1)}%</div>
-        <div class="mc-s">Variance explained</div>
+      <div class="mc" onclick='showFactor("alpha","${t}",${JSON.stringify(f)})'>
+        <div class="mc-l">Residual α</div>
+        <div class="mc-v ${cls(f.alpha)}">${pct(f.alpha)}</div>
       </div>
-      <div class="mc">
-        <div class="mc-l">Residual Alpha (Ann.)</div>
-        <div class="mc-v ${cls(ff5.alpha)}">${pct(ff5.alpha)}</div>
-        <div class="mc-s">True stock-specific return</div>
+      <div class="mc" onclick='showFactor("r2","${t}",${JSON.stringify(f)})'>
+        <div class="mc-l">R² FF5</div>
+        <div class="mc-v neu">${(f.r2*100).toFixed(1)}%</div>
       </div>
     </div>
 
-    <div class="section-head">FF3 Model Comparison</div>
-    <div class="metrics-grid">
-      ${Object.entries(ff3.loadings).map(([k, v]) => `
-        <div class="mc">
-          <div class="mc-l">${factorNames[k] || k}</div>
-          <div class="mc-v ${v > 0 ? 'pos' : 'neg'}">${fix3(v)}</div>
-          <div class="mc-s">FF3 loading</div>
-        </div>`).join('')}
-      <div class="mc">
-        <div class="mc-l">R² (FF3)</div>
-        <div class="mc-v neu">${(ff3.r2 * 100).toFixed(1)}%</div>
-        <div class="mc-s">Variance explained</div>
-      </div>
-      <div class="mc">
-        <div class="mc-l">Residual Alpha (Ann.)</div>
-        <div class="mc-v ${cls(ff3.alpha)}">${pct(ff3.alpha)}</div>
-        <div class="mc-s">FF3 stock-specific return</div>
-      </div>
-    </div>
-
-    <div class="factor-profile-card">
-      <div class="fp-label">Factor Profile</div>
-      <div class="fp-value">${f.factor_profile}</div>
-    </div>
-
-    <div class="section-head">Factor Contributions to Return (FF5, Annualised)</div>
-    <div class="chart-full"><div class="cc">
-      <div class="cc-t">How much did each factor contribute to ${t}'s return?</div>
-      <div id="chartFactors" class="chart-area"></div>
-    </div></div>
-
-    <div class="charts-2col">
-      <div class="cc">
-        <div class="cc-t">FF3 vs FF5 — R² Comparison</div>
-        <div id="chartR2" class="chart-area"></div>
-      </div>
-      <div class="cc">
-        <div class="cc-t">FF5 Factor Loadings</div>
-        <div id="chartLoadings" class="chart-area"></div>
-      </div>
-    </div>
-  `;
-
-  // Factor contributions bar
-  const contribs = ff5.contributions;
-  const labels = Object.keys(contribs).map(k => factorNames[k] || k);
-  const values = Object.values(contribs).map(v => +(v * 100).toFixed(3));
-  Plotly.newPlot('chartFactors', [{
-    x: labels, y: values, type: 'bar', orientation: 'v',
-    marker: { color: values.map(v => v >= 0 ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.7)') },
-    text: values.map(v => v.toFixed(2) + '%'),
-    textposition: values.map(v => Math.abs(v) < 1 ? 'outside' : 'auto'),
-    textfont: { color: '#e2e8f0', size: 11 },
-    cliponaxis: false
-  }], layout({
-    xaxis: { ...PLOTLY_LAYOUT.xaxis, type: 'category' },
-    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'Contribution (%)', autorange: true },
-    showlegend: false,
-    margin: { t: 40, r: 20, b: 60, l: 60 }
-  }), { responsive: true, displayModeBar: false });
-
-  // R2 comparison
-  Plotly.newPlot('chartR2', [{
-    x: ['FF3 Model', 'FF5 Model'],
-    y: [+(ff3.r2 * 100).toFixed(2), +(ff5.r2 * 100).toFixed(2)],
-    type: 'bar',
-    marker: { color: ['#3b82f6', '#22c55e'] },
-    text: [ff3.r2.toFixed(3), ff5.r2.toFixed(3)],
-    textposition: 'auto',
-    textfont: { color: '#e2e8f0', size: 11 }
-  }], layout({
-    xaxis: { ...PLOTLY_LAYOUT.xaxis, type: 'category' },
-    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'R² (%)', autorange: true },
-    showlegend: false,
-    margin: { t: 30, r: 20, b: 60, l: 60 }
-  }), { responsive: true, displayModeBar: false });
-
-  // Loadings bar
-  const lKeys = Object.keys(ff5.loadings);
-  const lVals = Object.values(ff5.loadings);
-  Plotly.newPlot('chartLoadings', [{
-    x: lKeys, y: lVals, type: 'bar',
-    marker: { color: lVals.map(v => v >= 0 ? 'rgba(59,130,246,0.7)' : 'rgba(245,158,11,0.7)') }
-  }], layout({
-    xaxis: { ...PLOTLY_LAYOUT.xaxis, type: 'category' },
-    showlegend: false
-  }), { responsive: true, displayModeBar: false });
-}
-
-// ─────────────────────────────────────────────
-//  Portfolio Score renderer
-// ─────────────────────────────────────────────
-function renderPortfolioScore(s) {
-  const scoreColor = s.composite >= 65 ? '#22c55e' : s.composite >= 45 ? '#f59e0b' : '#ef4444';
-  const verdictClass = s.verdict_class === 'positive' ? 'pos' : s.verdict_class === 'negative' ? 'neg' : 'amb';
-  const labels = {
-    risk_adjusted: 'Risk-Adjusted Return',
-    alpha: 'Alpha Generation',
-    diversification: 'Diversification',
-    efficiency: 'Weight Efficiency',
-    drawdown: 'Drawdown Control'
-  };
-
-  const recoHTML = s.recommendations.length > 0 ? `
-    <div class="section-head" style="margin-top:20px">Weight Recommendations — vs Maximum Sharpe</div>
-    <div class="reco-grid">
-      ${s.recommendations.map(r => `
-        <div class="reco-card">
-          <div class="reco-ticker">${r.ticker}</div>
-          <div class="reco-action ${r.diff > 0 ? 'pos' : 'neg'}">${r.action}</div>
-          <div class="reco-weights">${r.from}% → ${r.to}%</div>
-          <div class="reco-diff ${r.diff > 0 ? 'pos' : 'neg'}">${r.diff > 0 ? '+' : ''}${r.diff}%</div>
-        </div>`).join('')}
-    </div>` : '<div style="color:var(--muted);font-size:12px;margin-top:8px">Current weights are near-optimal.</div>';
-
-  return `
-    <div class="section-head" style="margin-top:24px">Portfolio Score</div>
-    <div class="score-hero" style="margin-bottom:16px">
-      <div class="score-circle" style="border-color:${scoreColor}">
-        <div class="score-number" style="color:${scoreColor}">${s.composite}</div>
-        <div class="score-label">/ 100</div>
-      </div>
-      <div class="score-verdict">
-        <div class="verdict-text ${verdictClass}">${s.verdict}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:8px">
-          Avg correlation ${s.avg_correlation} · Weights deviate ${s.vs_max_sharpe_diff}% from max-Sharpe optimal
-        </div>
-      </div>
-    </div>
+    <div class="section-head">Score Breakdown</div>
     <div class="score-components">
-      ${Object.entries(s.scores).map(([k, v]) => {
-        const color = v >= 65 ? '#22c55e' : v >= 45 ? '#f59e0b' : '#ef4444';
-        const weight = (s.weights[k] * 100).toFixed(0);
-        return `
-          <div class="score-row">
-            <div class="score-row-label">
-              <span>${labels[k] || k}</span>
-              <span class="score-weight">${weight}%</span>
-            </div>
-            <div class="score-bar-wrap">
-              <div class="score-bar" style="width:${v}%;background:${color}"></div>
-            </div>
-            <div class="score-row-val" style="color:${color}">${v}</div>
-            <div class="score-expl">${s.explanations[k]}</div>
-          </div>`;
+      ${Object.entries(s.scores).map(([k,v])=>{
+        const color=v>=65?'#22c55e':v>=45?'#f59e0b':'#ef4444';
+        const lb={valuation:'Valuation',momentum:'Momentum',quality:'Quality',risk_adjusted:'Risk-Adj',factor:'Factor'};
+        return `<div class="score-row">
+          <div class="score-row-label"><span>${lb[k]||k}</span><span class="score-weight">${(s.weights[k]*100).toFixed(0)}%</span></div>
+          <div class="score-bar-wrap"><div class="score-bar" style="width:${v}%;background:${color}"></div></div>
+          <div class="score-row-val" style="color:${color}">${v}</div>
+          <div class="score-expl">${s.explanations[k]}</div>
+        </div>`;
       }).join('')}
-    </div>
-    ${recoHTML}
-  `;
+    </div>`;
+
+  setTimeout(() => {
+    const c = d.pricing.charts;
+    const chartId = 'cmpChart_' + elId;
+    el.innerHTML += `<div class="section-head" style="margin-top:8px">Price Performance</div><div id="${chartId}" style="height:200px"></div>`;
+    Plotly.newPlot(chartId, [
+      {x:c.dates, y:c.stock_rebased, name:t, line:{color:'#15803d',width:2}, type:'scatter'},
+      {x:c.dates, y:c.bench_rebased, name:'S&P 500', line:{color:'rgba(255,255,255,0.3)',width:1.5,dash:'dot'}, type:'scatter'}
+    ], lay({margin:{t:10,r:10,b:30,l:45}}), CFG);
+  }, 80);
 }
 
-// ─────────────────────────────────────────────
-//  Module 3: Portfolio
-// ─────────────────────────────────────────────
-function renderPortfolio(data) {
-  const m = data.metrics;
-  const c = data.charts;
+// ── Portfolio compare side ────────────────────────────────────────────────────
+function renderPortCompareSide(elId, data, label) {
+  const m = data.metrics, c = data.charts;
+  const s = data.portfolio_score;
+  const sc = s.composite>=65?'#22c55e':s.composite>=45?'#f59e0b':'#ef4444';
+  const el = document.getElementById(elId);
+  el.innerHTML = `
+    <div class="compare-side-title">Portfolio ${label}</div>
 
-  const portHTML = `
-    <div class="module-header">
-      <div class="module-title">Portfolio Construction & Optimisation</div>
-      <div class="module-sub">Portfolio analytics · efficient frontier · Monte Carlo optimisation</div>
+    <div class="cmp-score-row">
+      ${scoreArc(s.composite, sc)}
+      <div>
+        <div style="font-size:13px;font-weight:600;color:${sc};margin-bottom:4px">${s.verdict}</div>
+        <div style="font-size:11px;color:var(--muted)">Portfolio Score</div>
+      </div>
     </div>
 
     <div class="section-head">Portfolio Metrics</div>
-    <div class="metrics-grid">
-      <div class="mc"><div class="mc-l">Portfolio Return</div>
-        <div class="mc-v ${cls(m.ann_return)}">${pct(m.ann_return)}</div>
-        <div class="mc-s">Annualised</div></div>
-      <div class="mc"><div class="mc-l">Portfolio Volatility</div>
-        <div class="mc-v ${m.ann_vol > 0.25 ? 'neg' : 'amb'}">${pct(m.ann_vol)}</div>
-        <div class="mc-s">Annualised</div></div>
-      <div class="mc"><div class="mc-l">Sharpe Ratio</div>
-        <div class="mc-v ${m.sharpe > 1 ? 'pos' : m.sharpe > 0 ? 'amb' : 'neg'}">${fix2(m.sharpe)}</div>
-        <div class="mc-s">Risk-adjusted return</div></div>
-      <div class="mc"><div class="mc-l">Portfolio Beta</div>
-        <div class="mc-v neu">${fix3(m.beta)}</div>
-        <div class="mc-s">Market sensitivity</div></div>
-      <div class="mc"><div class="mc-l">Portfolio Alpha</div>
-        <div class="mc-v ${cls(m.alpha)}">${pct(m.alpha)}</div>
-        <div class="mc-s">Above CAPM prediction</div></div>
-      <div class="mc"><div class="mc-l">Max Drawdown</div>
-        <div class="mc-v neg">-${(m.max_dd * 100).toFixed(2)}%</div>
-        <div class="mc-s">Worst loss</div></div>
+    <div class="cmp-metrics">
+      <div class="mc"><div class="mc-l">Return</div><div class="mc-v ${cls(m.ann_return)}">${pct(m.ann_return)}</div></div>
+      <div class="mc"><div class="mc-l">Volatility</div><div class="mc-v ${m.ann_vol>0.25?'neg':'amb'}">${pct(m.ann_vol)}</div></div>
+      <div class="mc"><div class="mc-l">Sharpe</div><div class="mc-v ${m.sharpe>1?'pos':m.sharpe>0.5?'amb':'neg'}">${fix2(m.sharpe)}</div></div>
+      <div class="mc"><div class="mc-l">Beta</div><div class="mc-v neu">${fix3(m.beta)}</div></div>
+      <div class="mc"><div class="mc-l">Alpha</div><div class="mc-v ${cls(m.alpha)}">${pct(m.alpha)}</div></div>
+      <div class="mc"><div class="mc-l">Max DD</div><div class="mc-v neg">-${(m.max_dd*100).toFixed(2)}%</div></div>
     </div>
 
     <div class="section-head">Holdings</div>
     <table class="holdings-table">
+      <thead><tr><th>Ticker</th><th>Weight</th><th>Return</th><th>Sharpe</th></tr></thead>
+      <tbody>
+        ${data.holdings.map(h=>`<tr>
+          <td class="sym-cell">${h.ticker}</td>
+          <td>${(h.weight*100).toFixed(1)}%</td>
+          <td class="${cls(h.ann_return)}">${pct(h.ann_return)}</td>
+          <td class="${h.sharpe>1?'pos':h.sharpe>0.5?'amb':'neg'}">${fix2(h.sharpe)}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>`;
+
+  setTimeout(() => {
+    const chartId = 'cmpPortChart_' + elId;
+    el.innerHTML += `<div class="section-head">Performance</div><div id="${chartId}" style="height:200px"></div>`;
+    Plotly.newPlot(chartId, [
+      {x:c.dates, y:c.port_cumulative, name:'Portfolio '+label, line:{color:'#15803d',width:2}, type:'scatter'},
+      {x:c.dates, y:c.bench_cumulative, name:'S&P 500', line:{color:'rgba(255,255,255,0.3)',width:1.5,dash:'dot'}, type:'scatter'}
+    ], lay({margin:{t:10,r:10,b:30,l:45}}), CFG);
+  }, 80);
+}
+
+// ── Stock comparison table ────────────────────────────────────────────────────
+function renderStockCompareTable(left, right) {
+  const m1 = left.pricing.metrics, m2 = right.pricing.metrics;
+  const f1 = left.factors.ff5, f2 = right.factors.ff5;
+  const s1 = left.score, s2 = right.score;
+  const t1 = left.ticker, t2 = right.ticker;
+
+  function winner(v1, v2, higherBetter=true) {
+    if (higherBetter) return v1 > v2 ? t1 : v2 > v1 ? t2 : 'Tie';
+    return v1 < v2 ? t1 : v2 < v1 ? t2 : 'Tie';
+  }
+
+  function winBadge(v1, v2, higherBetter=true) {
+    const w = winner(v1, v2, higherBetter);
+    if (w === 'Tie') return '<span style="font-size:10px;color:var(--muted)">Tie</span>';
+    return `<span class="cmp-winner">${w} ✓</span>`;
+  }
+
+  const rows = [
+    {
+      metric: 'Investment Score', v1: s1.composite, v2: s2.composite, higherBetter: true,
+      fmt: v => v + '/100',
+      explain: (w,l) => `${w} scores higher overall across valuation, momentum, quality, and risk-adjusted return signals. ${l} trails primarily on ${Object.entries(w===t1?s1.scores:s2.scores).sort((a,b)=>a[1]-b[1])[0][0]}.`
+    },
+    {
+      metric: 'Annualised Return', v1: m1.ann_return, v2: m2.ann_return, higherBetter: true,
+      fmt: v => pct(v),
+      explain: (w,l) => `${w} delivered ${pct(w===t1?m1.ann_return:m2.ann_return)} vs ${pct(w===t1?m2.ann_return:m1.ann_return)} for ${l}. Raw return advantage of ${pct(Math.abs(m1.ann_return-m2.ann_return))}.`
+    },
+    {
+      metric: 'Sharpe Ratio', v1: m1.sharpe, v2: m2.sharpe, higherBetter: true,
+      fmt: v => fix2(v),
+      explain: (w,l) => `${w} generates more return per unit of total risk (Sharpe ${fix2(w===t1?m1.sharpe:m2.sharpe)} vs ${fix2(w===t1?m2.sharpe:m1.sharpe)}). On a risk-adjusted basis, ${w} is the stronger performer.`
+    },
+    {
+      metric: 'Sortino Ratio', v1: m1.sortino, v2: m2.sortino, higherBetter: true,
+      fmt: v => fix2(v),
+      explain: (w,l) => `${w} handles downside volatility better. Its Sortino of ${fix2(w===t1?m1.sortino:m2.sortino)} means fewer large negative days relative to the return generated.`
+    },
+    {
+      metric: "Jensen's Alpha", v1: m1.alpha, v2: m2.alpha, higherBetter: true,
+      fmt: v => pct(v),
+      explain: (w,l) => `${w} generates ${pct(Math.abs(m1.alpha-m2.alpha))} more alpha above CAPM expectations. It is delivering more return than its systematic risk level requires.`
+    },
+    {
+      metric: 'FF5 Residual Alpha', v1: f1.alpha, v2: f2.alpha, higherBetter: true,
+      fmt: v => pct(v),
+      explain: (w,l) => `After stripping out all five Fama-French factors, ${w} retains ${pct(w===t1?f1.alpha:f2.alpha)} of genuine stock-specific return. ${l} at ${pct(w===t1?f2.alpha:f1.alpha)} has less idiosyncratic outperformance.`
+    },
+    {
+      metric: 'Volatility', v1: m1.ann_vol, v2: m2.ann_vol, higherBetter: false,
+      fmt: v => pct(v),
+      explain: (w,l) => `${w} carries less total price risk (${pct(w===t1?m1.ann_vol:m2.ann_vol)} annualised vol vs ${pct(w===t1?m2.ann_vol:m1.ann_vol)} for ${l}). Lower volatility means smoother returns and smaller position-size swings.`
+    },
+    {
+      metric: 'Max Drawdown', v1: m1.max_dd, v2: m2.max_dd, higherBetter: false,
+      fmt: v => '-' + (v*100).toFixed(2) + '%',
+      explain: (w,l) => `${w} experienced a shallower worst-case loss (${((w===t1?m1.max_dd:m2.max_dd)*100).toFixed(1)}% vs ${((w===t1?m2.max_dd:m1.max_dd)*100).toFixed(1)}% for ${l}). Smaller drawdowns require less recovery to get back to break-even.`
+    },
+    {
+      metric: 'Beta', v1: m1.beta, v2: m2.beta, higherBetter: false,
+      fmt: v => fix3(v),
+      explain: (w,l) => `${w} has lower systematic risk (beta ${fix3(w===t1?m1.beta:m2.beta)} vs ${fix3(w===t1?m2.beta:m1.beta)}). It amplifies market moves less, making it more defensive in downturns.`
+    },
+    {
+      metric: 'Information Ratio', v1: m1.ir, v2: m2.ir, higherBetter: true,
+      fmt: v => fix2(v),
+      explain: (w,l) => `${w} outperforms its benchmark more consistently (IR ${fix2(w===t1?m1.ir:m2.ir)} vs ${fix2(w===t1?m2.ir:m1.ir)}). Higher IR means the alpha is reliable, not a one-off.`
+    },
+    {
+      metric: 'Valuation Score', v1: s1.scores.valuation, v2: s2.scores.valuation, higherBetter: true,
+      fmt: v => v + '/100',
+      explain: (w,l) => `${w} is more attractively valued on traditional multiples (score ${w===t1?s1.scores.valuation:s2.scores.valuation} vs ${w===t1?s2.scores.valuation:s1.scores.valuation}). ${l} trades at a higher premium to fundamentals.`
+    },
+    {
+      metric: 'Momentum Score', v1: s1.scores.momentum, v2: s2.scores.momentum, higherBetter: true,
+      fmt: v => v + '/100',
+      explain: (w,l) => `${w} has stronger price momentum across 12M, 3M, and 1M timeframes. Momentum tends to persist over the next 3-12 months, favouring ${w}.`
+    },
+    {
+      metric: 'Quality Score', v1: s1.scores.quality, v2: s2.scores.quality, higherBetter: true,
+      fmt: v => v + '/100',
+      explain: (w,l) => `${w} scores higher on quality fundamentals — ROE, profit margins, and balance sheet strength. Higher quality companies historically command a return premium (RMW factor).`
+    },
+  ];
+
+  const t1wins = rows.filter(r => winner(r.v1, r.v2, r.higherBetter) === t1).length;
+  const t2wins = rows.filter(r => winner(r.v1, r.v2, r.higherBetter) === t2).length;
+  const overall = t1wins > t2wins ? t1 : t2wins > t1wins ? t2 : 'Neither';
+  const overallColor = overall === t1 ? '#22c55e' : overall === t2 ? '#3b82f6' : '#f59e0b';
+
+  document.getElementById('compareTableWrap').innerHTML = `
+    <div class="cmp-table-title">Head-to-Head Comparison</div>
+    <div class="cmp-table-sub" style="margin-bottom:12px">
+      <span style="color:#22c55e;font-weight:700">${t1}: ${t1wins} wins</span>
+      &nbsp;·&nbsp;
+      <span style="color:#3b82f6;font-weight:700">${t2}: ${t2wins} wins</span>
+      &nbsp;·&nbsp;
+      <span style="color:${overallColor};font-weight:700">Overall: ${overall} ${overall==='Neither'?'— evenly matched':'is the stronger pick'}</span>
+    </div>
+    <table class="cmp-table">
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>${t1}</th>
+          <th>${t2}</th>
+          <th>Winner</th>
+          <th>Why</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows.map(r => {
+          const w = winner(r.v1, r.v2, r.higherBetter);
+          const l = w === t1 ? t2 : t1;
+          const v1col = w === t1 ? '#22c55e' : w === t2 ? '#ef4444' : 'var(--text)';
+          const v2col = w === t2 ? '#22c55e' : w === t1 ? '#ef4444' : 'var(--text)';
+          return `<tr>
+            <td style="font-weight:600;color:var(--text)">${r.metric}</td>
+            <td style="font-family:var(--sans);font-weight:600;color:${v1col}">${r.fmt(r.v1)}</td>
+            <td style="font-family:var(--sans);font-weight:600;color:${v2col}">${r.fmt(r.v2)}</td>
+            <td>${winBadge(r.v1,r.v2,r.higherBetter)}</td>
+            <td><div class="cmp-explain">${w!=='Tie'?r.explain(w,l):'Both stocks perform similarly on this metric.'}</div></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ── Portfolio comparison table ────────────────────────────────────────────────
+function renderPortCompareTable(left, right) {
+  const m1 = left.metrics, m2 = right.metrics;
+  const s1 = left.portfolio_score, s2 = right.portfolio_score;
+
+  function winner(v1, v2, higherBetter=true) {
+    if (higherBetter) return v1 > v2 ? 'A' : v2 > v1 ? 'B' : 'Tie';
+    return v1 < v2 ? 'A' : v2 < v1 ? 'B' : 'Tie';
+  }
+  function winBadge(v1, v2, higherBetter=true) {
+    const w = winner(v1, v2, higherBetter);
+    if (w === 'Tie') return '<span style="font-size:10px;color:var(--muted)">Tie</span>';
+    return `<span class="cmp-winner">Portfolio ${w} ✓</span>`;
+  }
+
+  const rows = [
+    {metric:'Portfolio Score', v1:s1.composite, v2:s2.composite, higherBetter:true, fmt:v=>v+'/100',
+     explain:(w,l)=>`Portfolio ${w} scores higher overall across risk-adjusted return, alpha generation, diversification, weight efficiency, and drawdown control.`},
+    {metric:'Annualised Return', v1:m1.ann_return, v2:m2.ann_return, higherBetter:true, fmt:v=>pct(v),
+     explain:(w,l)=>`Portfolio ${w} delivered ${pct(w==='A'?m1.ann_return:m2.ann_return)} vs ${pct(w==='A'?m2.ann_return:m1.ann_return)} for Portfolio ${l}.`},
+    {metric:'Sharpe Ratio', v1:m1.sharpe, v2:m2.sharpe, higherBetter:true, fmt:v=>fix2(v),
+     explain:(w,l)=>`Portfolio ${w} generates better risk-adjusted return (Sharpe ${fix2(w==='A'?m1.sharpe:m2.sharpe)} vs ${fix2(w==='A'?m2.sharpe:m1.sharpe)}).`},
+    {metric:'Volatility', v1:m1.ann_vol, v2:m2.ann_vol, higherBetter:false, fmt:v=>pct(v),
+     explain:(w,l)=>`Portfolio ${w} carries less total risk (${pct(w==='A'?m1.ann_vol:m2.ann_vol)} vs ${pct(w==='A'?m2.ann_vol:m1.ann_vol)}). Lower volatility means smoother drawdown profile.`},
+    {metric:'Alpha', v1:m1.alpha, v2:m2.alpha, higherBetter:true, fmt:v=>pct(v),
+     explain:(w,l)=>`Portfolio ${w} generates more return above its CAPM expectation, indicating better stock selection.`},
+    {metric:'Max Drawdown', v1:m1.max_dd, v2:m2.max_dd, higherBetter:false, fmt:v=>'-'+(v*100).toFixed(2)+'%',
+     explain:(w,l)=>`Portfolio ${w} experienced a shallower worst-case loss, requiring less recovery to break even.`},
+    {metric:'Beta', v1:m1.beta, v2:m2.beta, higherBetter:false, fmt:v=>fix3(v),
+     explain:(w,l)=>`Portfolio ${w} is less sensitive to market moves (beta ${fix3(w==='A'?m1.beta:m2.beta)}), offering more defensive characteristics.`},
+    {metric:'Diversification', v1:s1.scores.diversification, v2:s2.scores.diversification, higherBetter:true, fmt:v=>v+'/100',
+     explain:(w,l)=>`Portfolio ${w} has lower average cross-asset correlation (${w==='A'?s1.avg_correlation:s2.avg_correlation}), providing more genuine diversification benefit.`},
+    {metric:'Weight Efficiency', v1:s1.scores.efficiency, v2:s2.scores.efficiency, higherBetter:true, fmt:v=>v+'/100',
+     explain:(w,l)=>`Portfolio ${w}'s current weights are closer to the mathematically optimal max-Sharpe allocation.`},
+  ];
+
+  const aWins = rows.filter(r=>winner(r.v1,r.v2,r.higherBetter)==='A').length;
+  const bWins = rows.filter(r=>winner(r.v1,r.v2,r.higherBetter)==='B').length;
+  const overall = aWins > bWins ? 'A' : bWins > aWins ? 'B' : 'Neither';
+
+  document.getElementById('compareTableWrap').innerHTML = `
+    <div class="cmp-table-title">Portfolio Head-to-Head</div>
+    <div class="cmp-table-sub" style="margin-bottom:12px">
+      <span style="color:#22c55e;font-weight:700">Portfolio A: ${aWins} wins</span>
+      &nbsp;·&nbsp;
+      <span style="color:#3b82f6;font-weight:700">Portfolio B: ${bWins} wins</span>
+      &nbsp;·&nbsp;
+      <span style="color:${overall==='Neither'?'#f59e0b':overall==='A'?'#22c55e':'#3b82f6'};font-weight:700">
+        ${overall==='Neither'?'Evenly matched':'Portfolio '+overall+' is better constructed'}
+      </span>
+    </div>
+    <table class="cmp-table">
+      <thead><tr><th>Metric</th><th>Portfolio A</th><th>Portfolio B</th><th>Winner</th><th>Why</th></tr></thead>
+      <tbody>
+        ${rows.map(r=>{
+          const w=winner(r.v1,r.v2,r.higherBetter),l=w==='A'?'B':'A';
+          const v1c=w==='A'?'#22c55e':w==='B'?'#ef4444':'var(--text)';
+          const v2c=w==='B'?'#22c55e':w==='A'?'#ef4444':'var(--text)';
+          return `<tr>
+            <td style="font-weight:600;color:var(--text)">${r.metric}</td>
+            <td style="font-weight:600;color:${v1c}">${r.fmt(r.v1)}</td>
+            <td style="font-weight:600;color:${v2c}">${r.fmt(r.v2)}</td>
+            <td>${winBadge(r.v1,r.v2,r.higherBetter)}</td>
+            <td><div class="cmp-explain">${w!=='Tie'?r.explain(w,l):'Both portfolios perform similarly here.'}</div></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+let state={ticker:null,period:null,pricing:null,factors:null,scoreData:null,portData:null};
+let currentModule='pricing';
+
+function switchModule(mod){
+  currentModule=mod;
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('nav-'+mod).classList.add('active');
+  const panel=document.getElementById('portfolioPanel');
+  const content=document.getElementById('mainContent');
+  const cmpPanel = document.getElementById('comparePanel');
+  if(mod==='portfolio'){
+    panel.style.display='flex';content.style.display='none';cmpPanel.style.display='none';
+    if(!document.getElementById('portRows').children.length){addPortRow();addPortRow();addPortRow();}
+    if(state.portData) renderPortfolio(state.portData);
+  } else if(mod==='compare'){
+    panel.style.display='none';content.style.display='none';cmpPanel.style.display='flex';
+    setCompareMode(compareMode || 'stocks');
+  } else {
+    panel.style.display='none';content.style.display='block';cmpPanel.style.display='none';
+    if(mod==='pricing'){ if(!state.pricing) renderEmpty(); else renderPricing(state.pricing); }
+    else if(mod==='factors') loadFactors();
+    else if(mod==='score') loadScore();
+  }
+}
+
+async function runAnalysis(){
+  const ticker=document.getElementById('tickerInput').value.trim().toUpperCase();
+  const period=document.getElementById('periodSelect').value;
+  if(!ticker) return;
+  const btn=document.getElementById('runBtn');
+  btn.disabled=true;btn.textContent='Loading…';
+  setStatus('Fetching data…');renderLoading();
+  try{
+    const res=await fetch('/api/analyse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticker,period})});
+    const data=await res.json();
+    if(data.error) throw new Error(data.error);
+    state.ticker=ticker;state.period=period;state.pricing=data;state.factors=null;state.scoreData=null;
+    setStatus(ticker+' · '+period);
+    if(currentModule==='pricing') renderPricing(data);
+    else if(currentModule==='factors') loadFactors();
+    else if(currentModule==='score') loadScore();
+  } catch(err){renderError(err.message);setStatus('');}
+  finally{btn.disabled=false;btn.textContent='Analyse';}
+}
+
+async function loadFactors(){
+  if(!state.ticker){renderEmpty();return;}
+  if(state.factors){renderFactors(state.factors);return;}
+  renderLoading();
+  try{
+    const res=await fetch('/api/factors',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticker:state.ticker,period:state.period})});
+    const data=await res.json();
+    if(data.error) throw new Error(data.error);
+    state.factors=data;renderFactors(data);
+  } catch(err){renderError(err.message);}
+}
+
+async function loadScore(){
+  if(!state.ticker){renderEmpty();return;}
+  if(state.scoreData){renderScore(state.scoreData);return;}
+  renderLoading();
+  try{
+    const res=await fetch('/api/score',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticker:state.ticker,period:state.period})});
+    const data=await res.json();
+    if(data.error) throw new Error(data.error);
+    state.scoreData=data;renderScore(data);
+  } catch(err){renderError(err.message);}
+}
+
+function addPortRow(){
+  const rows=document.getElementById('portRows');
+  if(rows.children.length>=15) return;
+  const div=document.createElement('div');div.className='port-row';
+  div.innerHTML='<input type="text" placeholder="Ticker" class="port-ticker" maxlength="10"/><input type="number" placeholder="Weight %" class="port-weight" min="0" max="100" step="0.1"/><button class="btn-remove" onclick="this.parentElement.remove()">×</button>';
+  rows.appendChild(div);
+}
+
+async function runPortfolio(){
+  const rows=document.querySelectorAll('.port-row');
+  const tickers=[],weights=[];
+  rows.forEach(r=>{
+    const t=r.querySelector('.port-ticker').value.trim().toUpperCase();
+    const w=parseFloat(r.querySelector('.port-weight').value);
+    if(t){tickers.push(t);weights.push(isNaN(w)?0:w/100);}
+  });
+  if(tickers.length<2){alert('Add at least 2 tickers.');return;}
+  const period=document.getElementById('periodSelect').value;
+  const btn=document.querySelector('.btn-primary');
+  btn.disabled=true;btn.textContent='Loading…';
+  try{
+    const res=await fetch('/api/portfolio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tickers,weights,period})});
+    const data=await res.json();
+    if(data.error) throw new Error(data.error);
+    state.portData=data;renderPortfolio(data);
+  } catch(err){alert('Error: '+err.message);}
+  finally{btn.disabled=false;btn.textContent='Run Portfolio Analysis';}
+}
+
+// Modal system
+function openModal(leftTitle,leftHTML,cards,chartRenderer){
+  document.getElementById('modalLeftTitle').textContent=leftTitle;
+  document.getElementById('modalLeftContent').innerHTML=leftHTML;
+  const cc=document.getElementById('modalCards');
+  cc.innerHTML=cards.map((c,i)=>`
+    <div class="explain-card" style="animation-delay:${i*0.13}s" onclick="openCardPopup('${encodeURIComponent(c.label)}','${encodeURIComponent(c.value)}','${encodeURIComponent(c.text)}','${c.color||'#d1d5db'}')">
+      <div class="explain-card-label">${c.label}</div>
+      <div class="explain-card-value" style="color:${c.color||'#d1d5db'}">${c.value}</div>
+      <div class="explain-card-text">${c.text}</div>
+    </div>`).join('');
+  document.getElementById('modalOverlay').classList.add('open');
+  if(chartRenderer) setTimeout(chartRenderer,80);
+}
+
+function openCardPopup(label,value,text,color){
+  document.getElementById('cardPopupLabel').textContent=decodeURIComponent(label);
+  document.getElementById('cardPopupValue').textContent=decodeURIComponent(value);
+  document.getElementById('cardPopupValue').style.color=color;
+  document.getElementById('cardPopupText').textContent=decodeURIComponent(text);
+  document.getElementById('cardPopup').classList.add('open');
+}
+
+function closeCardPopup(e){
+  if(e.target===document.getElementById('cardPopup')) document.getElementById('cardPopup').classList.remove('open');
+}
+
+function closeModal(e){
+  if(e.target===document.getElementById('modalOverlay')) closeModalDirect();
+}
+
+function closeModalDirect(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.getElementById('cardPopup').classList.remove('open');
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(document.getElementById('cardPopup').classList.contains('open')) document.getElementById('cardPopup').classList.remove('open');
+    else closeModalDirect();
+  }
+});
+
+// Helpers
+function setStatus(msg){document.getElementById('topbarStatus').textContent=msg;}
+const pct=v=>(v>=0?'+':'')+( v*100).toFixed(2)+'%';
+const fix2=v=>parseFloat(v).toFixed(2);
+const fix3=v=>parseFloat(v).toFixed(3);
+const cls=v=>v>=0?'pos':'neg';
+function sharpeClass(s){return s>1?'badge-good':s>0.5?'badge-neutral':'badge-weak';}
+function sharpeLabel(s){return s>1?'Good':s>0.5?'Neutral':'Weak';}
+function volClass(v){return v<0.15?'badge-good':v<0.30?'badge-neutral':'badge-weak';}
+function volLabel(v){return v<0.15?'Low Vol':v<0.30?'Moderate':'High Vol';}
+function ddClass(d){return d<0.10?'badge-good':d<0.20?'badge-neutral':'badge-weak';}
+function ddLabel(d){return d<0.10?'Contained':d<0.20?'Moderate':'Severe';}
+
+function renderEmpty(){document.getElementById('mainContent').innerHTML='<div class="state-empty"><div class="empty-icon">◈</div><p>Enter a US stock ticker and press <strong>Analyse</strong></p><p class="empty-sub">CAPM pricing · Fama-French factors · Investment Score</p></div>';}
+function renderLoading(){document.getElementById('mainContent').innerHTML='<div class="state-loading"><div class="spinner"></div><div>Fetching price data and running analysis…</div><div class="loading-sub">First run downloads FF factor data — takes 15–20 seconds</div></div>';}
+function renderError(msg){document.getElementById('mainContent').innerHTML=`<div class="state-error">⚠ ${msg}</div>`;}
+
+const PL={
+  paper_bgcolor:'transparent',plot_bgcolor:'transparent',
+  font:{color:'#f1f5f9',size:11,family:'Inter, sans-serif'},
+  margin:{t:20,r:20,b:40,l:55},
+  xaxis:{gridcolor:'#2e2e2e',linecolor:'#2e2e2e',zerolinecolor:'#2e2e2e',tickcolor:'#718096'},
+  yaxis:{gridcolor:'#2e2e2e',linecolor:'#2e2e2e',zerolinecolor:'#2e2e2e',tickcolor:'#718096'},
+  legend:{bgcolor:'transparent',font:{size:11,color:'#f1f5f9'}},
+  hovermode:'x unified',
+  hoverlabel:{bgcolor:'#1c1c1c',bordercolor:'#3d3d3d',font:{color:'#f1f5f9',size:13}},
+  dragmode:false
+};
+const CFG={responsive:true,displayModeBar:false,scrollZoom:false,staticPlot:false,modeBarButtonsToRemove:['zoom2d','pan2d','select2d','lasso2d','zoomIn2d','zoomOut2d','autoScale2d','resetScale2d']};
+function lay(o={}){return Object.assign({},PL,o);}
+
+function metricLeftHTML(label,value,color,sub){
+  return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px;text-align:center;gap:14px">
+    <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">${label}</div>
+    <div style="font-family:var(--mono);font-size:68px;font-weight:700;letter-spacing:-2px;color:${color};line-height:1">${value}</div>
+    ${sub?`<div style="font-size:13px;color:var(--muted);max-width:280px;line-height:1.5">${sub}</div>`:''}
+  </div>`;
+}
+
+// Module 1 — Asset Pricing
+function renderPricing(data){
+  const m=data.pricing.metrics,c=data.pricing.charts,t=data.ticker;
+  document.getElementById('mainContent').innerHTML=`
+    <div class="module-header"><div class="module-title">Asset Pricing Engine</div><div class="module-sub">CAPM analysis · risk-adjusted performance · return attribution</div></div>
+    <div class="ticker-badge"><span class="sym">${t}</span><span class="badge-sep">vs S&P 500</span><span class="badge-period">${state.period}</span></div>
+    <div class="section-head">Risk & Return Metrics — click any card for explanation</div>
+    <div class="metrics-grid">
+      <div class="mc" onclick='showMetric("beta","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Beta</div>
+        <div class="mc-v ${m.beta>1.2?'neg':m.beta<0.8?'pos':'neu'}">${fix3(m.beta)}</div>
+        <div class="mc-s">${m.beta>1?'Higher':'Lower'} systematic risk</div>
+        <span class="badge ${m.beta>1.2?'badge-weak':m.beta<0.8?'badge-good':'badge-neutral'}">${m.beta>1.2?'High Beta':m.beta<0.8?'Defensive':'Market-like'}</span>
+      </div>
+      <div class="mc" onclick='showMetric("return","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Realised Return</div>
+        <div class="mc-v ${cls(m.ann_return)}">${pct(m.ann_return)}</div>
+        <div class="mc-s">Market: ${pct(m.bench_return)}</div>
+        <span class="badge ${m.ann_return>0?'badge-good':'badge-weak'}">${m.ann_return>0?'Positive':'Negative'}</span>
+      </div>
+      <div class="mc" onclick='showMetric("capm","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">CAPM Expected</div>
+        <div class="mc-v neu">${pct(m.capm_exp)}</div>
+        <div class="mc-s">RF ${pct(m.rf_ann)} + β·ERP</div>
+      </div>
+      <div class="mc" onclick='showMetric("alpha","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Jensens Alpha</div>
+        <div class="mc-v ${cls(m.alpha)}">${pct(m.alpha)}</div>
+        <div class="mc-s">Return above CAPM</div>
+        <span class="badge ${m.alpha>0?'badge-good':'badge-weak'}">${m.alpha>0?'Outperforming':'Underperforming'}</span>
+      </div>
+      <div class="mc" onclick='showMetric("sharpe","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Sharpe Ratio</div>
+        <div class="mc-v ${m.sharpe>1?'pos':m.sharpe>0.5?'amb':'neg'}">${fix2(m.sharpe)}</div>
+        <div class="mc-s">Return per unit total risk</div>
+        <span class="badge ${sharpeClass(m.sharpe)}">${sharpeLabel(m.sharpe)}</span>
+      </div>
+      <div class="mc" onclick='showMetric("sortino","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Sortino Ratio</div>
+        <div class="mc-v ${m.sortino>1?'pos':m.sortino>0.5?'amb':'neg'}">${fix2(m.sortino)}</div>
+        <div class="mc-s">Return per unit downside risk</div>
+        <span class="badge ${sharpeClass(m.sortino)}">${sharpeLabel(m.sortino)}</span>
+      </div>
+      <div class="mc" onclick='showMetric("treynor","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Treynor Ratio</div>
+        <div class="mc-v ${m.treynor>0?'pos':'neg'}">${fix2(m.treynor)}</div>
+        <div class="mc-s">Return per unit systematic risk</div>
+      </div>
+      <div class="mc" onclick='showMetric("vol","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Volatility (Ann.)</div>
+        <div class="mc-v ${m.ann_vol>0.35?'neg':m.ann_vol>0.2?'amb':'pos'}">${pct(m.ann_vol)}</div>
+        <div class="mc-s">Annualised price risk</div>
+        <span class="badge ${volClass(m.ann_vol)}">${volLabel(m.ann_vol)}</span>
+      </div>
+      <div class="mc" onclick='showMetric("drawdown","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Max Drawdown</div>
+        <div class="mc-v neg">-${(m.max_dd*100).toFixed(2)}%</div>
+        <div class="mc-s">Worst peak-to-trough loss</div>
+        <span class="badge ${ddClass(m.max_dd)}">${ddLabel(m.max_dd)}</span>
+      </div>
+      <div class="mc" onclick='showMetric("var95","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">VaR 95%</div>
+        <div class="mc-v neg">-${(m.var95*100).toFixed(2)}%</div>
+        <div class="mc-s">Daily tail loss (5% of days)</div>
+      </div>
+      <div class="mc" onclick='showMetric("var99","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">VaR 99%</div>
+        <div class="mc-v neg">-${(m.var99*100).toFixed(2)}%</div>
+        <div class="mc-s">Daily tail loss (1% of days)</div>
+      </div>
+      <div class="mc" onclick='showMetric("ir","${t}",${JSON.stringify(m)})'>
+        <div class="mc-l">Information Ratio</div>
+        <div class="mc-v ${m.ir>0.5?'pos':m.ir>0?'amb':'neg'}">${fix2(m.ir)}</div>
+        <div class="mc-s">Active return vs tracking error</div>
+        <span class="badge ${m.ir>0.5?'badge-good':m.ir>0?'badge-neutral':'badge-weak'}">${m.ir>0.5?'Consistent':m.ir>0?'Mixed':'Inconsistent'}</span>
+      </div>
+    </div>
+    <div class="section-head">Visual Analysis — click any chart to expand</div>
+    <div class="chart-full"><div class="cc" onclick='showChart("perf","${t}",${JSON.stringify(m)})'>
+      <div class="cc-t">Price Performance — ${t} vs S&P 500 (rebased to 100)</div>
+      <div id="chartPerf" class="chart-area"></div>
+    </div></div>
+    <div class="charts-2col">
+      <div class="cc" onclick='showChart("beta","${t}",${JSON.stringify(m)})'>
+        <div class="cc-t">Rolling 60-Day Beta</div>
+        <div id="chartBeta" class="chart-area"></div>
+      </div>
+      <div class="cc" onclick='showChart("dist","${t}",${JSON.stringify(m)})'>
+        <div class="cc-t">Daily Return Distribution</div>
+        <div id="chartDist" class="chart-area"></div>
+      </div>
+    </div>
+    <div class="chart-full"><div class="cc" onclick='showChart("dd","${t}",${JSON.stringify(m)})'>
+      <div class="cc-t">Drawdown Over Time</div>
+      <div id="chartDD" class="chart-area"></div>
+    </div></div>
+    <div class="chart-full"><div class="cc" onclick='showChart("sml","${t}",${JSON.stringify(m)})'>
+      <div class="cc-t">CAPM Security Market Line — Where does ${t} sit?</div>
+      <div id="chartSML" style="height:320px"></div>
+    </div></div>`;
+  setTimeout(()=>{
+    const c=data.pricing.charts;
+    Plotly.newPlot('chartPerf',[
+      {x:c.dates,y:c.stock_rebased,name:t,line:{color:'#15803d',width:2.5},type:'scatter'},
+      {x:c.dates,y:c.bench_rebased,name:'S&P 500',line:{color:'#ffffff',width:2,dash:'dot'},type:'scatter'}
+    ],lay(),CFG);
+    Plotly.newPlot('chartBeta',[
+      {x:c.roll_dates,y:c.roll_betas,name:'Beta',line:{color:'#d1d5db',width:2.5},type:'scatter'},
+      {x:[c.roll_dates[0],c.roll_dates[c.roll_dates.length-1]],y:[1,1],name:'β=1',line:{color:'rgba(255,255,255,0.3)',dash:'dot',width:1.5},type:'scatter'}
+    ],lay(),CFG);
+    Plotly.newPlot('chartDist',[{x:c.dist_labels,y:c.dist_values,type:'bar',marker:{color:c.dist_labels.map(l=>parseFloat(l)>=0?'rgba(21,128,61,0.8)':'rgba(239,68,68,0.8)')}}],
+      lay({xaxis:{...PL.xaxis,title:'Daily Return %',type:'linear'},showlegend:false}),CFG);
+    Plotly.newPlot('chartDD',[{x:c.dd_dates,y:c.dd_series,fill:'tozeroy',fillcolor:'rgba(255,255,255,0.06)',line:{color:'#ffffff',width:2.5},type:'scatter',showlegend:false}],
+      lay({yaxis:{...PL.yaxis,title:'Drawdown %'}}),CFG);
+    Plotly.newPlot('chartSML',[
+      {x:c.sml_betas,y:c.sml_returns.map(v=>v*100),name:'SML',line:{color:'rgba(255,255,255,0.3)',dash:'dot',width:1.5},type:'scatter'},
+      {x:[c.stock_beta],y:[c.stock_return*100],name:t+' actual',mode:'markers',marker:{color:m.alpha>=0?'#22c55e':'#ef4444',size:14}},
+      {x:[c.stock_beta],y:[c.capm_return*100],name:'CAPM predicted',mode:'markers',marker:{color:'#d1d5db',size:11,symbol:'triangle-up'}}
+    ],lay({xaxis:{...PL.xaxis,title:'Beta',type:'linear'},yaxis:{...PL.yaxis,title:'Annualised Return (%)'},hovermode:'closest'}),CFG);
+  },50);
+}
+
+// Metric modal
+function showMetric(key,ticker,m){
+  const colors={
+    beta:m.beta>1.2?'#ef4444':m.beta<0.8?'#22c55e':'#d1d5db',
+    return:m.ann_return>=0?'#22c55e':'#ef4444',capm:'#d1d5db',
+    alpha:m.alpha>=0?'#22c55e':'#ef4444',
+    sharpe:m.sharpe>1?'#22c55e':m.sharpe>0.5?'#f59e0b':'#ef4444',
+    sortino:m.sortino>1?'#22c55e':m.sortino>0.5?'#f59e0b':'#ef4444',
+    treynor:m.treynor>0?'#22c55e':'#ef4444',
+    vol:m.ann_vol>0.35?'#ef4444':m.ann_vol>0.2?'#f59e0b':'#22c55e',
+    drawdown:'#ef4444',var95:'#ef4444',var99:'#ef4444',
+    ir:m.ir>0.5?'#22c55e':m.ir>0?'#f59e0b':'#ef4444'
+  };
+  const values={
+    beta:fix3(m.beta),return:pct(m.ann_return),capm:pct(m.capm_exp),alpha:pct(m.alpha),
+    sharpe:fix2(m.sharpe),sortino:fix2(m.sortino),treynor:fix2(m.treynor),vol:pct(m.ann_vol),
+    drawdown:'-'+(m.max_dd*100).toFixed(2)+'%',var95:'-'+(m.var95*100).toFixed(2)+'%',
+    var99:'-'+(m.var99*100).toFixed(2)+'%',ir:fix2(m.ir)
+  };
+  const subs={
+    beta:'Market: '+pct(m.bench_return)+' · RF: '+pct(m.rf_ann),
+    return:'Market: '+pct(m.bench_return),
+    capm:'RF '+pct(m.rf_ann)+' + β'+fix3(m.beta)+' × ERP',
+    alpha:pct(m.ann_return)+' − '+pct(m.capm_exp),
+    sharpe:'('+pct(m.ann_return)+' − '+pct(m.rf_ann)+') ÷ '+pct(m.ann_vol),
+    sortino:'Sharpe: '+fix2(m.sharpe),treynor:'Beta: '+fix3(m.beta),
+    vol:'Daily: ±'+(m.ann_vol/Math.sqrt(252)*100).toFixed(2)+'%',
+    drawdown:'Recovery needed: +'+((1/(1-m.max_dd)-1)*100).toFixed(1)+'%',
+    var95:'~13 bad days/year',var99:'~2-3 extreme days/year',ir:'Alpha: '+pct(m.alpha)
+  };
+  const allCards={
+    beta:[
+      {label:'Beta: '+ticker,value:fix3(m.beta),color:colors.beta,text:'When the S&P 500 moves 1%, '+ticker+' typically moves '+(m.beta*100).toFixed(1)+'%. Beta above 1 amplifies market moves; below 1 dampens them.'},
+      {label:m.beta>1.2?'High beta risk':m.beta<0.8?'Defensive profile':'Market neutral',value:m.beta>1.2?'Aggressive':m.beta<0.8?'Defensive':'Neutral',color:colors.beta,text:m.beta>1.2?ticker+' amplifies market moves. Expect bigger gains in bull markets and bigger losses in selloffs.':m.beta<0.8?ticker+' cushions market moves. It will lag in rallies but hold up better in downturns.':ticker+' moves broadly in line with the S&P 500.'},
+      {label:'Methodology',value:'1Y daily returns',color:'#718096',text:'Our beta uses 1-year daily returns. Google and Bloomberg show 5-year monthly beta — that is why their figure differs. Ours reflects the current market regime more accurately.'},
+      {label:'CAPM implication',value:'Required '+pct(m.capm_exp),color:'#718096',text:'A beta of '+fix3(m.beta)+' with market risk premium '+pct(m.bench_return-m.rf_ann)+' means CAPM requires '+pct(m.capm_exp)+' return from '+ticker+'.'}
+    ],
+    return:[
+      {label:ticker+' annualised return',value:pct(m.ann_return),color:colors.return,text:ticker+' delivered '+pct(m.ann_return)+' per year. Geometric annualisation — correctly compounds daily returns rather than simple averaging.'},
+      {label:'vs S&P 500',value:pct(m.bench_return),color:'#d1d5db',text:'The S&P 500 returned '+pct(m.bench_return)+' over the same period. '+ticker+(m.ann_return>m.bench_return?' beat':' trailed')+' it by '+Math.abs((m.ann_return-m.bench_return)*100).toFixed(2)+'% per year.'},
+      {label:'Raw outperformance',value:pct(m.ann_return-m.bench_return),color:(m.ann_return-m.bench_return)>=0?'#22c55e':'#ef4444',text:'Raw outperformance of '+pct(m.ann_return-m.bench_return)+' per year. This does not account for the risk taken. A stock can beat the market by taking far more volatility.'},
+      {label:'Risk-adjusted view',value:'Sharpe '+fix2(m.sharpe),color:'#d1d5db',text:ticker+' has a Sharpe of '+fix2(m.sharpe)+' — how much return per unit of risk. A lower return with higher Sharpe is often the better investment.'}
+    ],
+    capm:[
+      {label:'CAPM formula',value:pct(m.capm_exp),color:'#d1d5db',text:'RF + β × ERP = '+pct(m.rf_ann)+' + '+fix3(m.beta)+' × '+pct(m.bench_return-m.rf_ann)+' = '+pct(m.capm_exp)+'. This is the minimum return investors should demand given this risk level.'},
+      {label:'Risk-free rate',value:pct(m.rf_ann),color:'#718096',text:'The 10-Year US Treasury yield of '+pct(m.rf_ann)+' is the risk-free baseline. Every risky asset must beat this to justify holding it.'},
+      {label:'Market risk premium',value:pct(m.bench_return-m.rf_ann),color:'#d1d5db',text:'The S&P 500 earned '+pct(m.bench_return)+' vs risk-free '+pct(m.rf_ann)+', giving ERP of '+pct(m.bench_return-m.rf_ann)+'. Beta of '+fix3(m.beta)+' scales this premium.'},
+      {label:'Actual vs required',value:pct(m.ann_return),color:m.ann_return>=m.capm_exp?'#22c55e':'#ef4444',text:ticker+(m.ann_return>=m.capm_exp?' exceeded':' fell short of')+' its CAPM requirement of '+pct(m.capm_exp)+' by '+pct(Math.abs(m.alpha))+'. This gap is Jensens Alpha.'}
+    ],
+    alpha:[
+      {label:'Jensens Alpha',value:pct(m.alpha),color:colors.alpha,text:'Alpha = '+pct(m.ann_return)+' − '+pct(m.capm_exp)+' = '+pct(m.alpha)+'. '+ticker+' returned '+pct(Math.abs(m.alpha))+(m.alpha>=0?' more than':' less than')+' what its risk level required.'},
+      {label:m.alpha>=0?'Genuine outperformance':'Underperformance',value:m.alpha>=0?'Positive alpha':'Negative alpha',color:colors.alpha,text:m.alpha>=0?ticker+' is generating real excess return beyond what systematic risk explains. This is what active managers look for.':ticker+' is not adequately compensating for the risk it carries. A simpler index allocation would be more efficient.'},
+      {label:'Consistency check',value:'IR '+fix2(m.ir),color:'#718096',text:'Alpha of '+pct(m.alpha)+' with IR of '+fix2(m.ir)+' means this outperformance is '+(m.ir>0.5?'consistent and reliable':'inconsistent — may be partly luck')+'.'},
+      {label:'Stricter test',value:'FF5 residual alpha',color:'#718096',text:'CAPM alpha strips out only market risk. Factor Analysis strips out five factors. If alpha survives that test, it is genuinely stock-specific.'}
+    ],
+    sharpe:[
+      {label:'Sharpe: '+ticker,value:fix2(m.sharpe),color:colors.sharpe,text:'Sharpe = ('+pct(m.ann_return)+' − '+pct(m.rf_ann)+') ÷ '+pct(m.ann_vol)+' = '+fix2(m.sharpe)+'. For every 1% of risk taken, '+ticker+' delivered '+fix2(m.sharpe)+'% of excess return.'},
+      {label:'Benchmark',value:'>1.0 = Good',color:'#d1d5db',text:'Above 1.0 is considered good. The market typically achieves 0.5–0.7 long-term. '+ticker+' at '+fix2(m.sharpe)+' is '+(m.sharpe>1?'well above':m.sharpe>0.7?'above':'below')+' the market baseline.'},
+      {label:'Key limitation',value:'Penalises upside',color:'#718096',text:'Sharpe penalises all volatility including positive moves. The Sortino ratio ('+fix2(m.sortino)+') only counts downside — often a fairer measure for stocks with asymmetric returns.'}
+    ],
+    sortino:[
+      {label:'Sortino: '+ticker,value:fix2(m.sortino),color:colors.sortino,text:'Sortino = ('+pct(m.ann_return)+' − '+pct(m.rf_ann)+') ÷ downside deviation = '+fix2(m.sortino)+'. Only days where '+ticker+' lost money count toward the risk denominator.'},
+      {label:'vs Sharpe',value:'Sharpe '+fix2(m.sharpe),color:'#d1d5db',text:ticker+' Sortino ('+fix2(m.sortino)+') is '+(m.sortino>m.sharpe?'higher than':'lower than')+' its Sharpe ('+fix2(m.sharpe)+'). '+(m.sortino>m.sharpe?'Upside volatility exceeds downside — good asymmetry.':'Downside moves dominate total volatility — more left-tail risk.')+''},
+      {label:'When it matters',value:'Downside-first investors',color:'#718096',text:'Risk-averse investors prefer Sortino. It rewards stocks that deliver returns without frequent large losses.'}
+    ],
+    treynor:[
+      {label:'Treynor: '+ticker,value:fix2(m.treynor),color:colors.treynor,text:'Treynor = ('+pct(m.ann_return)+' − '+pct(m.rf_ann)+') ÷ '+fix3(m.beta)+' = '+fix2(m.treynor)+'. Return per unit of systematic risk only.'},
+      {label:'When to use it',value:'In a portfolio',color:'#d1d5db',text:'When '+ticker+' is one holding in a diversified portfolio, idiosyncratic risk is already diversified away. Only beta risk remains — making Treynor the right comparison metric.'},
+      {label:'vs Sharpe',value:'Sharpe '+fix2(m.sharpe),color:'#718096',text:'Sharpe uses total volatility; Treynor uses beta. The gap reflects idiosyncratic risk that disappears when held in a portfolio.'}
+    ],
+    vol:[
+      {label:'Annualised volatility',value:pct(m.ann_vol),color:colors.vol,text:ticker+' moves ±'+(m.ann_vol*100).toFixed(1)+'% per year on average. In a typical year, returns could range from '+pct(m.ann_return-m.ann_vol)+' to '+pct(m.ann_return+m.ann_vol)+'.'},
+      {label:'vs S&P 500',value:'Market ~15–18%',color:'#d1d5db',text:ticker+' at '+pct(m.ann_vol)+' is '+(m.ann_vol>0.18?(m.ann_vol/0.165).toFixed(1)+'x more volatile':'less volatile')+' than the broad market.'},
+      {label:'Daily equivalent',value:'±'+(m.ann_vol/Math.sqrt(252)*100).toFixed(2)+'% per day',color:'#718096',text:'On a typical trading day, '+ticker+' moves ±'+(m.ann_vol/Math.sqrt(252)*100).toFixed(2)+'%. On 2 out of 3 days the move stays within this range.'},
+      {label:'Dollar framing',value:'$'+(m.ann_vol*10000).toFixed(0)+' per $10K/year',color:'#718096',text:'On a $10,000 position, annual volatility of '+pct(m.ann_vol)+' means typical swings of ±$'+(m.ann_vol*10000).toFixed(0)+' per year.'}
+    ],
+    drawdown:[
+      {label:'Max Drawdown: '+ticker,value:'-'+(m.max_dd*100).toFixed(2)+'%',color:'#ef4444',text:'The worst loss '+ticker+' experienced was '+(m.max_dd*100).toFixed(2)+'% from peak to trough. An investor who bought at the peak would have been down this much.'},
+      {label:'Dollar impact',value:'-$'+(m.max_dd*10000).toFixed(0)+' per $10K',color:'#ef4444',text:'On a $10,000 investment, this drawdown means a paper loss of $'+(m.max_dd*10000).toFixed(0)+'.'},
+      {label:'Recovery required',value:'+'+((1/(1-m.max_dd)-1)*100).toFixed(1)+'% to break even',color:'#f59e0b',text:'After a '+(m.max_dd*100).toFixed(1)+'% loss, '+ticker+' needs to gain '+((1/(1-m.max_dd)-1)*100).toFixed(1)+'% just to return to the previous peak. Larger losses require disproportionately larger recoveries.'},
+      {label:'Severity',value:m.max_dd<0.10?'Contained':m.max_dd<0.20?'Moderate':'Severe',color:m.max_dd<0.10?'#22c55e':m.max_dd<0.20?'#f59e0b':'#ef4444',text:'Drawdowns below 10% are normal. 10–20% is moderate. Above 20% is severe and tests conviction.'}
+    ],
+    var95:[
+      {label:'VaR 95%: '+ticker,value:'-'+(m.var95*100).toFixed(2)+'%',color:'#ef4444',text:'On 95% of trading days, '+ticker+' loses no more than '+(m.var95*100).toFixed(2)+'%. On the worst 5% of days — roughly 13 days per year — losses exceed this.'},
+      {label:'Dollar framing',value:'-$'+(m.var95*10000).toFixed(0)+' per $10K',color:'#ef4444',text:'On a $10,000 position, a VaR 95% event means a single-day loss of up to $'+(m.var95*10000).toFixed(0)+'. This happens roughly once a month on average.'},
+      {label:'Method',value:'Historical simulation',color:'#d1d5db',text:'Reads directly from the 5th percentile of actual historical daily returns. No distributional assumptions — reflects what '+ticker+' has actually done.'}
+    ],
+    var99:[
+      {label:'VaR 99%: '+ticker,value:'-'+(m.var99*100).toFixed(2)+'%',color:'#ef4444',text:'Only 1% of trading days — roughly 2–3 days per year — produce losses worse than '+(m.var99*100).toFixed(2)+'%.'},
+      {label:'Gap vs VaR 95%',value:'+'+((m.var99-m.var95)*100).toFixed(2)+'%',color:'#f59e0b',text:'The gap of '+((m.var99-m.var95)*100).toFixed(2)+'% between VaR 99% and 95% indicates fat tails — when bad days happen, they are much worse than average bad days.'},
+      {label:'Caveat',value:'Not worst-case',color:'#718096',text:'VaR 99% shows the threshold, not the average loss beyond it. Losses in the 1% tail can be far larger.'}
+    ],
+    ir:[
+      {label:'IR: '+ticker,value:fix2(m.ir),color:colors.ir,text:'IR = Active Return ÷ Tracking Error = '+fix2(m.ir)+'. Measures how consistently '+ticker+' outperforms the S&P 500 relative to how much it deviates from it.'},
+      {label:'Benchmark',value:'>0.5 = Good',color:'#d1d5db',text:'Professional managers target IR above 0.5. Above 1.0 is exceptional. '+ticker+' at '+fix2(m.ir)+' is '+(m.ir>0.5?'in the good range':'below the professional threshold')+'.'},
+      {label:'What it adds',value:'Alpha consistency',color:'#718096',text:'Alpha ('+pct(m.alpha)+') measures magnitude. IR measures reliability. '+ticker+' at IR '+fix2(m.ir)+' means that outperformance is '+(m.ir>0.5?'consistent':'lumpy and unreliable')+'.'}
+    ]
+  };
+  const leftHTML=metricLeftHTML(key.replace('var95','VaR 95%').replace('var99','VaR 99%').replace('ir','Information Ratio').replace('vol','Volatility').replace('capm','CAPM Expected').replace('drawdown','Max Drawdown').toUpperCase(),values[key],colors[key],subs[key]);
+  openModal(key.toUpperCase()+' — '+ticker,leftHTML,allCards[key]||[],null);
+}
+
+// Chart modal
+function showChart(key,ticker,m){
+  const chartHTML='<div id="modalChart" style="height:360px"></div>';
+  const c=state.pricing&&state.pricing.pricing?state.pricing.pricing.charts:null;
+  if(!c) return;
+  const cards={
+    perf:[
+      {label:ticker+' return',value:pct(m.ann_return),color:'#15803d',text:ticker+' delivered '+pct(m.ann_return)+' per year. A $100 investment became $'+((1+m.ann_return)*100).toFixed(0)+' by period end.'},
+      {label:'S&P 500 return',value:pct(m.bench_return),color:'#ffffff',text:'The S&P 500 returned '+pct(m.bench_return)+'. The gap between lines shows active outperformance — green above white = '+ticker+' is ahead.'},
+      {label:'Active return',value:pct(m.ann_return-m.bench_return),color:(m.ann_return-m.bench_return)>=0?'#22c55e':'#ef4444',text:ticker+(m.ann_return>m.bench_return?' outperformed':' underperformed')+' the market by '+Math.abs((m.ann_return-m.bench_return)*100).toFixed(2)+'% per year. Both lines start at 100 for fair comparison.'},
+      {label:'How to read it',value:'Line divergence',color:'#718096',text:'When green pulls away from white, '+ticker+' is outperforming. When the gap narrows or reverses, it is underperforming. The slope of each line shows the rate of return at any point.'}
+    ],
+    beta:[
+      {label:'Current 60-day beta',value:fix3(m.beta),color:'#d1d5db',text:'The most recent beta is '+fix3(m.beta)+'. '+ticker+' currently moves '+(m.beta*100).toFixed(1)+'% for every 1% S&P 500 move.'},
+      {label:'β=1 reference line',value:'Market neutral',color:'#718096',text:'Above β=1: '+ticker+' amplifies market moves. Below β=1: it dampens them. The line shows where the stock sits relative to market-neutral.'},
+      {label:'Beta trend',value:'Dynamic risk',color:'#d1d5db',text:'Rolling beta reveals regime changes. A rising beta means '+ticker+' is becoming more market-sensitive. A falling beta suggests increasing independence from the market.'},
+      {label:'Why 60-day window',value:'Recency vs noise',color:'#718096',text:'60 trading days (~3 months) balances recency with statistical reliability. Shorter windows are noisier; longer windows miss current regime changes.'}
+    ],
+    dist:[
+      {label:'Volatility',value:pct(m.ann_vol),color:'#d1d5db',text:'The width of this histogram reflects '+ticker+' "volatility of '+pct(m.ann_vol)+'. A wider, flatter shape means more extreme daily moves in both directions.'},
+      {label:'VaR 95% left tail',value:'-'+(m.var95*100).toFixed(2)+'%',color:'#ef4444',text:'The red bars extending left past -'+(m.var95*100).toFixed(2)+'% represent the 5% worst days — roughly 13 days per year of losses beyond this threshold.'},
+      {label:'VaR 99% extreme',value:'-'+(m.var99*100).toFixed(2)+'%',color:'#ef4444',text:'Beyond -'+(m.var99*100).toFixed(2)+'% are the 1% tail events — 2-3 days per year of extreme losses. These are the black-swan days.'},
+      {label:'Shape interpretation',value:'Normal vs fat-tailed',color:'#718096',text:'If the distribution has bars extending far left, '+ticker+' has fat tails — extreme losses are more frequent than a normal distribution would predict.'}
+    ],
+    dd:[
+      {label:'Max Drawdown',value:'-'+(m.max_dd*100).toFixed(2)+'%',color:'#ef4444',text:'The deepest point is -'+(m.max_dd*100).toFixed(2)+'%. An investor who bought at the peak before this trough would have been down this much.'},
+      {label:'Recovery required',value:'+'+((1/(1-m.max_dd)-1)*100).toFixed(1)+'%',color:'#f59e0b',text:'After a '+(m.max_dd*100).toFixed(1)+'% loss, '+ticker+' needed to gain '+((1/(1-m.max_dd)-1)*100).toFixed(1)+'% to recover. Larger drawdowns require disproportionately larger rebounds.'},
+      {label:'Time at zero',value:'All-time high',color:'#22c55e',text:'When the line is at 0, '+ticker+' is at its peak. Time spent near 0 means fewer buying-at-top scenarios.'},
+      {label:'Depth and duration',value:'Both matter',color:'#718096',text:'A quick -20% that recovered in days is less damaging than a slow -15% over 18 months. Look at both how deep and how long each drawdown lasted.'}
+    ],
+    sml:[
+      {label:ticker+' actual',value:pct(m.ann_return),color:m.alpha>=0?'#22c55e':'#ef4444',text:ticker+' sits at beta '+fix3(m.beta)+', return '+pct(m.ann_return)+'. The dot is '+(m.alpha>=0?'above':'below')+' the Security Market Line — meaning it '+(m.alpha>=0?'outperformed':'underperformed')+' its risk-adjusted expectation.'},
+      {label:'CAPM prediction',value:pct(m.capm_exp),color:'#d1d5db',text:'Given beta '+fix3(m.beta)+', CAPM says '+ticker+' should return '+pct(m.capm_exp)+'. The blue triangle marks this theoretical point on the line.'},
+      {label:'Alpha: the gap',value:pct(m.alpha),color:m.alpha>=0?'#22c55e':'#ef4444',text:'The vertical gap between the dot and triangle is '+pct(m.alpha)+'. '+(m.alpha>=0?'Above the line = generating alpha. Every active manager aims for this.':'Below the line = destroying value on a risk-adjusted basis.')+''},
+      {label:'The SML',value:'Fair value line',color:'#718096',text:'Every point on the dotted line is a "fairly priced" asset. Assets above earn alpha; below destroy value relative to their systematic risk.'}
+    ]
+  };
+  const renderers={
+    perf:()=>Plotly.newPlot('modalChart',[{x:c.dates,y:c.stock_rebased,name:ticker,line:{color:'#15803d',width:2.5},type:'scatter'},{x:c.dates,y:c.bench_rebased,name:'S&P 500',line:{color:'#ffffff',width:2,dash:'dot'},type:'scatter'}],lay({margin:{t:10,r:10,b:40,l:50}}),CFG),
+    beta:()=>Plotly.newPlot('modalChart',[{x:c.roll_dates,y:c.roll_betas,name:'Beta',line:{color:'#d1d5db',width:2.5},type:'scatter'},{x:[c.roll_dates[0],c.roll_dates[c.roll_dates.length-1]],y:[1,1],name:'β=1',line:{color:'rgba(255,255,255,0.3)',dash:'dot',width:1.5},type:'scatter'}],lay({margin:{t:10,r:10,b:40,l:50}}),CFG),
+    dist:()=>Plotly.newPlot('modalChart',[{x:c.dist_labels,y:c.dist_values,type:'bar',marker:{color:c.dist_labels.map(l=>parseFloat(l)>=0?'rgba(21,128,61,0.8)':'rgba(239,68,68,0.8)')}}],lay({xaxis:{...PL.xaxis,title:'Daily Return %',type:'linear'},showlegend:false,margin:{t:10,r:10,b:40,l:50}}),CFG),
+    dd:()=>Plotly.newPlot('modalChart',[{x:c.dd_dates,y:c.dd_series,fill:'tozeroy',fillcolor:'rgba(255,255,255,0.06)',line:{color:'#ffffff',width:2.5},type:'scatter',showlegend:false}],lay({yaxis:{...PL.yaxis,title:'Drawdown %'},margin:{t:10,r:10,b:40,l:55}}),CFG),
+    sml:()=>Plotly.newPlot('modalChart',[{x:c.sml_betas,y:c.sml_returns.map(v=>v*100),name:'SML',line:{color:'rgba(255,255,255,0.3)',dash:'dot',width:1.5},type:'scatter'},{x:[c.stock_beta],y:[c.stock_return*100],name:ticker+' actual',mode:'markers',marker:{color:m.alpha>=0?'#22c55e':'#ef4444',size:14}},{x:[c.stock_beta],y:[c.capm_return*100],name:'CAPM predicted',mode:'markers',marker:{color:'#d1d5db',size:11,symbol:'triangle-up'}}],lay({xaxis:{...PL.xaxis,title:'Beta',type:'linear'},yaxis:{...PL.yaxis,title:'Return (%)'},hovermode:'closest',margin:{t:10,r:10,b:40,l:55}}),CFG)
+  };
+  openModal(ticker+' — '+key.toUpperCase()+' Chart',chartHTML,cards[key]||[],renderers[key]||null);
+}
+
+// Module 2 — Factor Analysis
+function renderFactors(data){
+  const f=data.factors,ff5=f.ff5,ff3=f.ff3,t=data.ticker;
+  const fN={MKT_RF:'Market (MKT-RF)',SMB:'Size (SMB)',HML:'Value (HML)',RMW:'Profitability (RMW)',CMA:'Investment (CMA)'};
+  const fS={MKT_RF:'Market',SMB:'Size',HML:'Value',RMW:'Profitability',CMA:'Investment'};
+  document.getElementById('mainContent').innerHTML=`
+    <div class="module-header"><div class="module-title">Factor Analysis Engine</div><div class="module-sub">Fama-French 3 & 5 factor decomposition · return attribution</div></div>
+    <div class="ticker-badge"><span class="sym">${t}</span><span class="badge-sep">Fama-French 5-Factor</span></div>
+    <div class="section-head">FF5 Factor Loadings — click any card for explanation</div>
+    <div class="metrics-grid">
+      ${Object.entries(ff5.loadings).map(([k,v])=>`
+        <div class="mc" onclick='showFactor("${k}","${t}",${JSON.stringify(ff5)})'>
+          <div class="mc-l">${fN[k]||k}</div>
+          <div class="mc-v ${v>0?'pos':'neg'}">${fix3(v)}</div>
+          <div class="mc-s">Factor loading (beta)</div>
+          <span class="badge ${Math.abs(v)>0.3?'badge-good':'badge-neutral'}">${Math.abs(v)>0.3?'Strong':'Weak'} ${v>0?'▲':'▼'}</span>
+        </div>`).join('')}
+      <div class="mc" onclick='showFactor("r2","${t}",${JSON.stringify(ff5)})'>
+        <div class="mc-l">R² (FF5)</div>
+        <div class="mc-v neu">${(ff5.r2*100).toFixed(1)}%</div>
+        <div class="mc-s">Variance explained by factors</div>
+        <span class="badge ${ff5.r2>0.5?'badge-weak':'badge-good'}">${ff5.r2>0.5?'Factor-driven':'Idiosyncratic'}</span>
+      </div>
+      <div class="mc" onclick='showFactor("alpha","${t}",${JSON.stringify(ff5)})'>
+        <div class="mc-l">Residual Alpha (Ann.)</div>
+        <div class="mc-v ${cls(ff5.alpha)}">${pct(ff5.alpha)}</div>
+        <div class="mc-s">True stock-specific return</div>
+        <span class="badge ${ff5.alpha>0?'badge-good':'badge-weak'}">${ff5.alpha>0?'Genuine Alpha':'No Alpha'}</span>
+      </div>
+    </div>
+    <div class="section-head">FF3 Model Comparison</div>
+    <div class="metrics-grid">
+      ${Object.entries(ff3.loadings).map(([k,v])=>`
+        <div class="mc"><div class="mc-l">${fN[k]||k}</div><div class="mc-v ${v>0?'pos':'neg'}">${fix3(v)}</div><div class="mc-s">FF3 loading</div></div>`).join('')}
+      <div class="mc"><div class="mc-l">R² (FF3)</div><div class="mc-v neu">${(ff3.r2*100).toFixed(1)}%</div><div class="mc-s">FF3 variance explained</div></div>
+      <div class="mc"><div class="mc-l">Residual Alpha (Ann.)</div><div class="mc-v ${cls(ff3.alpha)}">${pct(ff3.alpha)}</div><div class="mc-s">FF3 stock-specific return</div></div>
+    </div>
+    <div class="factor-profile-card"><div class="fp-label">Factor Profile</div><div class="fp-value">${f.factor_profile}</div></div>
+    <div class="section-head">Factor Contributions — click to expand</div>
+    <div class="chart-full"><div class="cc" onclick='showFactorChart("contrib","${t}",${JSON.stringify({ff5,ff3})})'>
+      <div class="cc-t">How much did each factor contribute to ${t}'s return? (FF5, Annualised)</div>
+      <div id="chartFactors" class="chart-area"></div>
+    </div></div>
+    <div class="charts-2col">
+      <div class="cc" onclick='showFactorChart("r2","${t}",${JSON.stringify({ff5,ff3})})'>
+        <div class="cc-t">FF3 vs FF5 — R² Comparison</div>
+        <div id="chartR2" class="chart-area"></div>
+      </div>
+      <div class="cc" onclick='showFactorChart("loadings","${t}",${JSON.stringify({ff5,ff3})})'>
+        <div class="cc-t">FF5 Factor Loadings</div>
+        <div id="chartLoadings" class="chart-area"></div>
+      </div>
+    </div>`;
+  setTimeout(()=>{
+    const labels=Object.keys(ff5.contributions).map(k=>fS[k]||k);
+    const values=Object.values(ff5.contributions).map(v=>+(v*100).toFixed(3));
+    Plotly.newPlot('chartFactors',[{x:labels,y:values,type:'bar',marker:{color:values.map(v=>v>=0?'rgba(21,128,61,0.8)':'rgba(239,68,68,0.8)')},text:values.map(v=>v.toFixed(2)+'%'),textposition:'auto',textfont:{color:'#f1f5f9',size:11},cliponaxis:false}],
+      lay({xaxis:{...PL.xaxis,type:'category'},yaxis:{...PL.yaxis,title:'Contribution (%)'},showlegend:false,margin:{t:30,r:20,b:60,l:60}}),CFG);
+    Plotly.newPlot('chartR2',[{x:['FF3 Model','FF5 Model'],y:[+(ff3.r2*100).toFixed(2),+(ff5.r2*100).toFixed(2)],type:'bar',marker:{color:['#3d3d3d','#15803d']},text:[ff3.r2.toFixed(3),ff5.r2.toFixed(3)],textposition:'auto',textfont:{color:'#f1f5f9',size:11}}],
+      lay({xaxis:{...PL.xaxis,type:'category'},yaxis:{...PL.yaxis,title:'R² (%)'},showlegend:false}),CFG);
+    const lK=Object.keys(ff5.loadings).map(k=>fS[k]||k);
+    const lV=Object.values(ff5.loadings);
+    Plotly.newPlot('chartLoadings',[{x:lK,y:lV,type:'bar',marker:{color:lV.map(v=>v>=0?'rgba(21,128,61,0.8)':'rgba(245,158,11,0.8)')}}],
+      lay({xaxis:{...PL.xaxis,type:'category'},showlegend:false}),CFG);
+  },50);
+}
+
+function showFactor(key,ticker,ff5){
+  const fDesc={MKT_RF:{name:'Market Factor (MKT-RF)',desc:'How much overall market movement drives this stocks returns.'},SMB:{name:'Size Factor (SMB)',desc:'Small Minus Big. Positive = small-cap behaviour; negative = large-cap.'},HML:{name:'Value Factor (HML)',desc:'High Minus Low book-to-market. Positive = value stock; negative = growth stock.'},RMW:{name:'Profitability Factor (RMW)',desc:'Robust Minus Weak profitability. High positive = returns driven by strong profitability.'},CMA:{name:'Investment Factor (CMA)',desc:'Conservative Minus Aggressive investment. Positive = conservative capex.'}};
+  if(key==='r2'){
+    openModal('R² — Explained Variance',metricLeftHTML('R² FF5',(ff5.r2*100).toFixed(1)+'%','#d1d5db','FF3: '+(ff3&&ff3.r2?(ff3.r2*100).toFixed(1):'N/A')+'%'),[
+      {label:'FF5 R²',value:(ff5.r2*100).toFixed(1)+'%',color:'#d1d5db',text:'The five factors explain '+(ff5.r2*100).toFixed(1)+'% of '+ticker+' "return variance. The remaining '+((1-ff5.r2)*100).toFixed(1)+'% is idiosyncratic — specific to the company.'},
+      {label:ff5.r2>0.5?'Factor-driven':'Idiosyncratic',value:ff5.r2>0.5?'>50% factor':'<50% factor',color:'#d1d5db',text:ff5.r2>0.5?'Most returns are explained by systematic factors. Less room for genuine stock-picking alpha.':'Most returns are idiosyncratic — the company has distinctive drivers beyond what factors capture. This is where alpha lives.'},
+      {label:'Residual alpha',value:pct(ff5.alpha),color:ff5.alpha>=0?'#22c55e':'#ef4444',text:'After stripping out all five factors, '+ticker+' still generates '+pct(ff5.alpha)+' of return that no factor explains. This is the truest measure of genuine stock outperformance.'}
+    ],null);
+  } else if(key==='alpha'){
+    openModal('Residual Alpha — True Stock-Specific Return',metricLeftHTML('FF5 Residual Alpha',pct(ff5.alpha),ff5.alpha>=0?'#22c55e':'#ef4444','R²: '+(ff5.r2*100).toFixed(1)+'%'),[
+      {label:'FF5 Residual Alpha',value:pct(ff5.alpha),color:ff5.alpha>=0?'#22c55e':'#ef4444',text:'After controlling for market, size, value, profitability, and investment factors, '+ticker+' generates '+pct(ff5.alpha)+' of excess return. This cannot be attributed to any known systematic risk factor.'},
+      {label:'Why it matters',value:'Genuine outperformance',color:'#d1d5db',text:'A stock with high raw returns might just be riding factor tailwinds. Residual alpha proves the return is real — not just compensation for systematic risk exposure.'},
+      {label:'vs CAPM alpha',value:'Stricter test',color:'#718096',text:'CAPM alpha only adjusts for market risk. FF5 alpha adjusts for five factors. Its a much stricter test — if alpha survives here, its genuinely stock-specific.'}
+    ],null);
+  } else {
+    const fd=fDesc[key];if(!fd) return;
+    const loading=ff5.loadings[key];
+    openModal(fd.name,metricLeftHTML(fd.name,fix3(loading),loading>=0?'#22c55e':'#f59e0b',fd.desc),[
+      {label:'Loading: '+ticker,value:fix3(loading),color:loading>=0?'#22c55e':'#f59e0b',text:ticker+' "'+fd.name+' loading is '+fix3(loading)+'. '+(Math.abs(loading)>0.3?'This is a meaningful exposure.':'This is a relatively weak exposure.')+''},
+      {label:'Direction',value:loading>0?'Positive':'Negative',color:loading>=0?'#22c55e':'#f59e0b',text:fd.desc},
+      {label:'Contribution to return',value:pct((ff5.contributions[key]||0)),color:(ff5.contributions[key]||0)>=0?'#22c55e':'#ef4444',text:'This factor contributed '+pct(ff5.contributions[key]||0)+' to '+ticker+' "annualised return over the period.'}
+    ],null);
+  }
+}
+
+function showFactorChart(key,ticker,fdata){
+  const chartHTML='<div id="modalChart" style="height:360px"></div>';
+  const ff5=fdata.ff5,ff3=fdata.ff3;
+  const fS={MKT_RF:'Market',SMB:'Size',HML:'Value',RMW:'Profitability',CMA:'Investment'};
+  const cards={
+    contrib:[
+      {label:'Largest contributor',value:Object.entries(ff5.contributions).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))[0][0],color:'#d1d5db',text:'The factor contributing most to '+ticker+' "return. Green bars = positive contribution; red bars = this factor dragged on returns.'},
+      {label:'Market factor',value:pct(ff5.contributions.MKT_RF||0),color:(ff5.contributions.MKT_RF||0)>=0?'#22c55e':'#ef4444',text:'Market factor contribution of '+pct(ff5.contributions.MKT_RF||0)+'. This reflects how much of '+ticker+' "return came from the general market rising or falling.'},
+      {label:'Profitability factor',value:pct(ff5.contributions.RMW||0),color:(ff5.contributions.RMW||0)>=0?'#22c55e':'#ef4444',text:'RMW contributed '+pct(ff5.contributions.RMW||0)+'. If negative, it means the profitability factor had poor returns in this period — it dragged performance despite '+ticker+' "high RMW loading.'},
+      {label:'Residual alpha',value:pct(ff5.alpha),color:ff5.alpha>=0?'#22c55e':'#ef4444',text:'After all factor contributions are summed, '+pct(ff5.alpha)+' of '+ticker+' "return remains unexplained. This is the stock-specific component.'}
+    ],
+    r2:[
+      {label:'FF3 R²',value:(ff3.r2*100).toFixed(1)+'%',color:'#3d3d3d',text:'The 3-factor model (market, size, value) explains only '+(ff3.r2*100).toFixed(1)+'% of '+ticker+' "return variance. This is the baseline.'},
+      {label:'FF5 R²',value:(ff5.r2*100).toFixed(1)+'%',color:'#15803d',text:'Adding profitability (RMW) and investment (CMA) improves explanation to '+(ff5.r2*100).toFixed(1)+'%. The gap of '+((ff5.r2-ff3.r2)*100).toFixed(1)+'% is how much these two extra factors add.'},
+      {label:'What the gap means',value:'+'+((ff5.r2-ff3.r2)*100).toFixed(1)+'%',color:'#d1d5db',text:'A large gap means quality (profitability) and capital allocation (investment) factors are important drivers of '+ticker+' "returns — beyond what size and value explain.'},
+      {label:'Residual',value:((1-ff5.r2)*100).toFixed(1)+'% unexplained',color:'#718096',text:'Even with 5 factors, '+((1-ff5.r2)*100).toFixed(1)+'% of variance is unexplained. This idiosyncratic component is where stock-specific alpha lives.'}
+    ],
+    loadings:[
+      {label:'Dominant factor',value:Object.entries(ff5.loadings).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))[0][0],color:'#d1d5db',text:'The factor with the highest loading drives the most systematic return for '+ticker+'. A high loading means strong exposure to that factors risk premium.'},
+      {label:'Value vs Growth',value:fix3(ff5.loadings.HML||0),color:(ff5.loadings.HML||0)>=0?'#22c55e':'#f59e0b',text:'HML loading of '+fix3(ff5.loadings.HML||0)+'. '+(ff5.loadings.HML<-0.2?ticker+' behaves like a growth stock — high valuation multiples relative to book value.':'Neutral to slight value tilt.')+''},
+      {label:'Quality (RMW)',value:fix3(ff5.loadings.RMW||0),color:(ff5.loadings.RMW||0)>=0?'#22c55e':'#f59e0b',text:'RMW loading of '+fix3(ff5.loadings.RMW||0)+'. '+(ff5.loadings.RMW>0.3?'Strong quality tilt — '+ticker+' "returns are heavily driven by its exceptional profitability.':'Moderate quality exposure.')+''}
+    ]
+  };
+  const renderers={
+    contrib:()=>{const labels=Object.keys(ff5.contributions).map(k=>fS[k]||k);const values=Object.values(ff5.contributions).map(v=>+(v*100).toFixed(3));Plotly.newPlot('modalChart',[{x:labels,y:values,type:'bar',marker:{color:values.map(v=>v>=0?'rgba(21,128,61,0.8)':'rgba(239,68,68,0.8)')},text:values.map(v=>v.toFixed(2)+'%'),textposition:'auto',textfont:{color:'#f1f5f9',size:11}}],lay({xaxis:{...PL.xaxis,type:'category'},yaxis:{...PL.yaxis,title:'Contribution (%)'},showlegend:false,margin:{t:30,r:20,b:60,l:60}}),CFG);},
+    r2:()=>Plotly.newPlot('modalChart',[{x:['FF3 Model','FF5 Model'],y:[+(ff3.r2*100).toFixed(2),+(ff5.r2*100).toFixed(2)],type:'bar',marker:{color:['#3d3d3d','#15803d']},text:[ff3.r2.toFixed(3),ff5.r2.toFixed(3)],textposition:'auto',textfont:{color:'#f1f5f9',size:11}}],lay({xaxis:{...PL.xaxis,type:'category'},yaxis:{...PL.yaxis,title:'R² (%)'},showlegend:false}),CFG),
+    loadings:()=>{const lK=Object.keys(ff5.loadings).map(k=>fS[k]||k);const lV=Object.values(ff5.loadings);Plotly.newPlot('modalChart',[{x:lK,y:lV,type:'bar',marker:{color:lV.map(v=>v>=0?'rgba(21,128,61,0.8)':'rgba(245,158,11,0.8)')}}],lay({xaxis:{...PL.xaxis,type:'category'},showlegend:false}),CFG);}
+  };
+  openModal(ticker+' — Factor '+key.toUpperCase(),chartHTML,cards[key]||[],renderers[key]||null);
+}
+
+// Module 3 — Portfolio
+function renderPortfolioScore(s){
+  const sc=s.composite>=65?'#22c55e':s.composite>=45?'#f59e0b':'#ef4444';
+  const vc=s.verdict_class==='positive'?'pos':s.verdict_class==='negative'?'neg':'amb';
+  const lb={risk_adjusted:'Risk-Adjusted Return',alpha:'Alpha Generation',diversification:'Diversification',efficiency:'Weight Efficiency',drawdown:'Drawdown Control'};
+  const reco=s.recommendations.length>0?`
+    <div class="section-head" style="margin-top:20px">Weight Recommendations — vs Maximum Sharpe</div>
+    <div class="reco-grid">
+      ${s.recommendations.map((r,i)=>`<div class="reco-card" style="animation:cardIn 0.4s ease ${i*0.08}s both"><div class="reco-ticker">${r.ticker}</div><div class="reco-action ${r.diff>0?'pos':'neg'}">${r.action}</div><div class="reco-weights">${r.from}% → ${r.to}%</div><div class="reco-diff ${r.diff>0?'pos':'neg'}">${r.diff>0?'+':''} ${r.diff}%</div></div>`).join('')}
+    </div>`:`<div style="color:var(--muted);font-size:12px;margin-top:8px">Current weights are near-optimal.</div>`;
+  return `
+    <div class="section-head" style="margin-top:24px">Portfolio Score</div>
+    <div class="score-hero" style="margin-bottom:16px">
+      <div class="score-circle">${scoreArc(s.composite, sc)}</div>
+      <div class="score-verdict">
+        <div class="verdict-text ${vc}">${s.verdict}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px">Avg correlation ${s.avg_correlation} · Weights deviate ${s.vs_max_sharpe_diff}% from max-Sharpe optimal</div>
+      </div>
+    </div>
+    <div class="score-components">
+      ${Object.entries(s.scores).map(([k,v])=>{const color=v>=65?'#22c55e':v>=45?'#f59e0b':'#ef4444';return`<div class="score-row"><div class="score-row-label"><span>${lb[k]||k}</span><span class="score-weight">${(s.weights[k]*100).toFixed(0)}%</span></div><div class="score-bar-wrap"><div class="score-bar" style="width:${v}%;background:${color}"></div></div><div class="score-row-val" style="color:${color}">${v}</div><div class="score-expl">${s.explanations[k]}</div></div>`;}).join('')}
+    </div>${reco}`;
+}
+
+function renderPortfolio(data){
+  const m=data.metrics,c=data.charts;
+  document.getElementById('portfolioPanel').innerHTML=`<div class="port-results">
+    <div class="module-header"><div class="module-title">Portfolio Construction & Optimisation</div><div class="module-sub">Portfolio analytics · efficient frontier · Monte Carlo optimisation</div></div>
+    <div class="section-head">Portfolio Metrics — click any card for explanation</div>
+    <div class="metrics-grid">
+      <div class="mc" onclick='showPortMetric("return",${JSON.stringify(m)})'>
+        <div class="mc-l">Portfolio Return</div><div class="mc-v ${cls(m.ann_return)}">${pct(m.ann_return)}</div>
+        <div class="mc-s">Annualised geometric</div><span class="badge ${m.ann_return>0?'badge-good':'badge-weak'}">${m.ann_return>0?'Positive':'Negative'}</span>
+      </div>
+      <div class="mc" onclick='showPortMetric("vol",${JSON.stringify(m)})'>
+        <div class="mc-l">Portfolio Volatility</div><div class="mc-v ${m.ann_vol>0.25?'neg':'amb'}">${pct(m.ann_vol)}</div>
+        <div class="mc-s">Accounts for correlation</div><span class="badge ${volClass(m.ann_vol)}">${volLabel(m.ann_vol)}</span>
+      </div>
+      <div class="mc" onclick='showPortMetric("sharpe",${JSON.stringify(m)})'>
+        <div class="mc-l">Sharpe Ratio</div><div class="mc-v ${m.sharpe>1?'pos':m.sharpe>0.5?'amb':'neg'}">${fix2(m.sharpe)}</div>
+        <div class="mc-s">Risk-adjusted return</div><span class="badge ${sharpeClass(m.sharpe)}">${sharpeLabel(m.sharpe)}</span>
+      </div>
+      <div class="mc" onclick='showPortMetric("beta",${JSON.stringify(m)})'>
+        <div class="mc-l">Portfolio Beta</div><div class="mc-v neu">${fix3(m.beta)}</div>
+        <div class="mc-s">Market sensitivity</div><span class="badge ${m.beta>1.2?'badge-weak':m.beta<0.8?'badge-good':'badge-neutral'}">${m.beta>1.2?'Aggressive':m.beta<0.8?'Defensive':'Neutral'}</span>
+      </div>
+      <div class="mc" onclick='showPortMetric("alpha",${JSON.stringify(m)})'>
+        <div class="mc-l">Portfolio Alpha</div><div class="mc-v ${cls(m.alpha)}">${pct(m.alpha)}</div>
+        <div class="mc-s">Above CAPM prediction</div><span class="badge ${m.alpha>0?'badge-good':'badge-weak'}">${m.alpha>0?'Outperforming':'Underperforming'}</span>
+      </div>
+      <div class="mc" onclick='showPortMetric("dd",${JSON.stringify(m)})'>
+        <div class="mc-l">Max Drawdown</div><div class="mc-v neg">-${(m.max_dd*100).toFixed(2)}%</div>
+        <div class="mc-s">Worst portfolio loss</div><span class="badge ${ddClass(m.max_dd)}">${ddLabel(m.max_dd)}</span>
+      </div>
+    </div>
+    <div class="section-head">Holdings — click any row for explanation</div>
+    <table class="holdings-table">
       <thead><tr><th>Ticker</th><th>Weight</th><th>Ann. Return</th><th>Volatility</th><th>Sharpe</th></tr></thead>
       <tbody>
-        ${data.holdings.map(h => `
-          <tr>
-            <td class="sym-cell">${h.ticker}</td>
-            <td>${(h.weight * 100).toFixed(1)}%</td>
-            <td class="${cls(h.ann_return)}">${pct(h.ann_return)}</td>
-            <td>${pct(h.ann_vol)}</td>
-            <td class="${h.sharpe > 1 ? 'pos' : h.sharpe > 0 ? 'amb' : 'neg'}">${fix2(h.sharpe)}</td>
-          </tr>`).join('')}
+        ${data.holdings.map(h=>`<tr onclick='showHolding(${JSON.stringify(h)},${JSON.stringify(data)})' style="cursor:pointer">
+          <td class="sym-cell">${h.ticker}</td><td>${(h.weight*100).toFixed(1)}%</td>
+          <td class="${cls(h.ann_return)}">${pct(h.ann_return)}</td>
+          <td>${pct(h.ann_vol)}</td>
+          <td class="${h.sharpe>1?'pos':h.sharpe>0.5?'amb':'neg'}">${fix2(h.sharpe)}</td>
+        </tr>`).join('')}
       </tbody>
     </table>
-
     <div class="charts-2col">
-      <div class="cc">
+      <div class="cc" onclick='showPortChart("perf",${JSON.stringify(data)})'>
         <div class="cc-t">Portfolio vs S&P 500 (rebased to 100)</div>
         <div id="chartPortPerf" class="chart-area"></div>
       </div>
-      <div class="cc">
+      <div class="cc" onclick='showPortChart("corr",${JSON.stringify(data)})'>
         <div class="cc-t">Correlation Matrix</div>
         <div id="chartCorr" class="chart-area"></div>
       </div>
     </div>
-
-    <div class="chart-full"><div class="cc">
+    <div class="chart-full"><div class="cc" onclick='showPortChart("ef",${JSON.stringify(data)})'>
       <div class="cc-t">Efficient Frontier — 3,000 Monte Carlo Portfolios</div>
-      <div id="chartEF" class="chart-area" style="height:380px"></div>
+      <div id="chartEF" style="height:380px"></div>
     </div></div>
-
     <div class="section-head">Optimised Portfolios</div>
     <div class="opt-grid">
       <div class="opt-card">
-        <div class="opt-title">Minimum Variance</div>
-        <div class="opt-sub">Lowest possible volatility</div>
-        ${Object.entries(data.min_var_weights).map(([t, w]) =>
-          `<div class="opt-row"><span>${t}</span><span>${(w*100).toFixed(1)}%</span></div>`).join('')}
+        <div class="opt-title">Minimum Variance</div><div class="opt-sub">Lowest possible volatility</div>
+        ${Object.entries(data.min_var_weights).map(([t,w])=>`<div class="opt-row"><span>${t}</span><span>${(w*100).toFixed(1)}%</span></div>`).join('')}
       </div>
       <div class="opt-card">
-        <div class="opt-title">Maximum Sharpe</div>
-        <div class="opt-sub">Best risk-adjusted return</div>
-        ${Object.entries(data.max_sharpe_weights).map(([t, w]) =>
-          `<div class="opt-row"><span>${t}</span><span>${(w*100).toFixed(1)}%</span></div>`).join('')}
+        <div class="opt-title">Maximum Sharpe</div><div class="opt-sub">Best risk-adjusted return</div>
+        ${Object.entries(data.max_sharpe_weights).map(([t,w])=>`<div class="opt-row"><span>${t}</span><span>${(w*100).toFixed(1)}%</span></div>`).join('')}
       </div>
     </div>
-
-    ${data.portfolio_score ? renderPortfolioScore(data.portfolio_score) : ''}
-  `;
-
-  document.getElementById('portfolioPanel').innerHTML = `<div class="port-results">${portHTML}</div>`;
-
-  // Performance
-  Plotly.newPlot('chartPortPerf', [
-    { x: c.dates, y: c.port_cumulative, name: 'Portfolio', line: { color: '#3b82f6', width: 2 }, type: 'scatter' },
-    { x: c.dates, y: c.bench_cumulative, name: 'S&P 500', line: { color: '#475569', width: 1.5, dash: 'dot' }, type: 'scatter' }
-  ], layout(), { responsive: true, displayModeBar: false });
-
-  // Correlation heatmap
-  const corr = data.corr_matrix;
-  Plotly.newPlot('chartCorr', [{
-    z: corr.values, x: corr.labels, y: corr.labels,
-    type: 'heatmap', colorscale: 'RdBu', reversescale: true, zmin: -1, zmax: 1
-  }], layout({
-    margin: { t: 10, r: 10, b: 60, l: 60 },
-    xaxis: { ...PLOTLY_LAYOUT.xaxis, type: 'category' },
-    yaxis: { ...PLOTLY_LAYOUT.yaxis, type: 'category' }
-  }), { responsive: true, displayModeBar: false });
-
-  // Efficient frontier
-  const ef = data.efficient_frontier;
-  Plotly.newPlot('chartEF', [{
-    x: ef.vols.map(v => v * 100), y: ef.returns.map(v => v * 100),
-    mode: 'markers', type: 'scatter', name: 'Portfolios',
-    marker: { color: ef.sharpes, colorscale: 'Viridis', size: 4, showscale: true,
-              colorbar: { title: 'Sharpe', thickness: 12, len: 0.8 } }
-  }], layout({
-    xaxis: { ...PLOTLY_LAYOUT.xaxis, title: 'Volatility (%)', type: 'linear' },
-    yaxis: { ...PLOTLY_LAYOUT.yaxis, title: 'Return (%)', type: 'linear' },
-    hovermode: 'closest'
-  }), { responsive: true, displayModeBar: false });
+    ${data.portfolio_score?renderPortfolioScore(data.portfolio_score):''}
+  </div>`;
+  setTimeout(()=>{
+    Plotly.newPlot('chartPortPerf',[
+      {x:c.dates,y:c.port_cumulative,name:'Portfolio',line:{color:'#15803d',width:2.5},type:'scatter'},
+      {x:c.dates,y:c.bench_cumulative,name:'S&P 500',line:{color:'#ffffff',width:2,dash:'dot'},type:'scatter'}
+    ],lay(),CFG);
+    const corr=data.corr_matrix;
+    Plotly.newPlot('chartCorr',[{z:corr.values,x:corr.labels,y:corr.labels,type:'heatmap',colorscale:[[0,'#1c1c1c'],[0.5,'#22c55e'],[1,'#f1f5f9']],zmin:-1,zmax:1}],
+      lay({margin:{t:10,r:10,b:60,l:60},xaxis:{...PL.xaxis,type:'category'},yaxis:{...PL.yaxis,type:'category'}}),CFG);
+    const ef=data.efficient_frontier;
+    Plotly.newPlot('chartEF',[{x:ef.vols.map(v=>v*100),y:ef.returns.map(v=>v*100),mode:'markers',type:'scatter',name:'Portfolios',marker:{color:ef.sharpes,colorscale:'Viridis',size:4,showscale:true,colorbar:{title:'Sharpe',thickness:12,len:0.8,tickfont:{color:'#f1f5f9'},titlefont:{color:'#f1f5f9'}}}}],
+      lay({xaxis:{...PL.xaxis,title:'Volatility (%)',type:'linear'},yaxis:{...PL.yaxis,title:'Return (%)',type:'linear'},hovermode:'closest'}),CFG);
+  },50);
 }
 
-// ─────────────────────────────────────────────
-//  Module 4: Investment Score
-// ─────────────────────────────────────────────
-function renderScore(data) {
-  const s = data.score;
-  const t = data.ticker;
-
-  const scoreColor = s.composite >= 65 ? '#22c55e' : s.composite >= 45 ? '#f59e0b' : '#ef4444';
-  const verdictClass = s.verdict_class === 'positive' ? 'pos' : s.verdict_class === 'negative' ? 'neg' : 'amb';
-
-  const componentLabels = {
-    valuation: 'Valuation',
-    momentum: 'Momentum',
-    quality: 'Quality',
-    risk_adjusted: 'Risk-Adjusted Return',
-    factor: 'Factor Attractiveness'
+function showPortMetric(key,m){
+  const colors={return:m.ann_return>=0?'#22c55e':'#ef4444',vol:m.ann_vol>0.25?'#ef4444':'#f59e0b',sharpe:m.sharpe>1?'#22c55e':m.sharpe>0.5?'#f59e0b':'#ef4444',beta:'#d1d5db',alpha:m.alpha>=0?'#22c55e':'#ef4444',dd:'#ef4444'};
+  const values={return:pct(m.ann_return),vol:pct(m.ann_vol),sharpe:fix2(m.sharpe),beta:fix3(m.beta),alpha:pct(m.alpha),dd:'-'+(m.max_dd*100).toFixed(2)+'%'};
+  const subs={return:'Benchmark return: '+(m.bench_return?pct(m.bench_return):'N/A'),vol:'Accounts for cross-asset correlations',sharpe:'vs market ~0.5-0.7',beta:'Market sensitivity',alpha:'Above CAPM prediction',dd:'Recovery: +'+((1/(1-m.max_dd)-1)*100).toFixed(1)+'%'};
+  const cards={
+    return:[
+      {label:'Portfolio return',value:pct(m.ann_return),color:colors.return,text:'The combined portfolio returned '+pct(m.ann_return)+' annualised. This is the weighted geometric average of all holdings, correctly compounding daily returns.'},
+      {label:'Diversification benefit',value:'See Sharpe: '+fix2(m.sharpe),color:'#d1d5db',text:'Raw return tells only part of the story. The Sharpe ratio of '+fix2(m.sharpe)+' tells you how much return you got per unit of risk taken across the combined portfolio.'}
+    ],
+    vol:[
+      {label:'Portfolio volatility',value:pct(m.ann_vol),color:colors.vol,text:'Portfolio volatility of '+pct(m.ann_vol)+' is typically lower than the simple average of individual stock volatilities. This is the diversification benefit — uncorrelated assets reduce total risk.'},
+      {label:'Why its lower',value:'Correlation effect',color:'#d1d5db',text:'When holdings do not move in perfect lockstep, combining them reduces total volatility. The more uncorrelated the assets, the greater the reduction. Check the correlation matrix to see how correlated your holdings are.'}
+    ],
+    sharpe:[
+      {label:'Portfolio Sharpe',value:fix2(m.sharpe),color:colors.sharpe,text:'The portfolio earns '+fix2(m.sharpe)+' units of excess return per unit of total risk. Above 1.0 is good; the market typically achieves 0.5-0.7.'},
+      {label:'Benchmark',value:'>1.0 = Strong',color:'#d1d5db',text:'At '+fix2(m.sharpe)+', this portfolio is '+(m.sharpe>1?'delivering strong risk-adjusted returns.':'below the threshold for strong risk-adjusted performance. Consider the optimised weightings to improve this.')+''}
+    ],
+    beta:[
+      {label:'Portfolio beta',value:fix3(m.beta),color:'#d1d5db',text:'The portfolio has a beta of '+fix3(m.beta)+', meaning it moves approximately '+(m.beta*100).toFixed(0)+'% for every 1% market move.'},
+      {label:m.beta>1.2?'Aggressive tilt':m.beta<0.8?'Defensive tilt':'Market neutral',value:m.beta>1.2?'High market sensitivity':m.beta<0.8?'Low market sensitivity':'Market-like',color:'#d1d5db',text:m.beta>1.2?'This portfolio amplifies market moves — outperforms in bull markets but falls harder in downturns. Consider adding defensive holdings to reduce beta.':m.beta<0.8?'This portfolio is defensive — it should hold up better in downturns but will lag in strong bull markets.':'This portfolio moves broadly in line with the market.'}
+    ],
+    alpha:[
+      {label:'Portfolio alpha',value:pct(m.alpha),color:colors.alpha,text:'After accounting for the portfolios beta of '+fix3(m.beta)+', it generates '+pct(m.alpha)+' of excess return above CAPM expectations.'},
+      {label:'Source',value:'Stock selection',color:'#d1d5db',text:'Portfolio alpha comes from stock selection — holding stocks that generate more return than their individual risk levels justify. Check individual Sharpe ratios to identify the alpha drivers.'}
+    ],
+    dd:[
+      {label:'Portfolio max drawdown',value:'-'+(m.max_dd*100).toFixed(2)+'%',color:'#ef4444',text:'The portfolio fell '+(m.max_dd*100).toFixed(2)+'% from its peak. Diversification should reduce this vs individual stock drawdowns — check how it compares to individual holding drawdowns.'},
+      {label:'Dollar impact',value:'-$'+(m.max_dd*10000).toFixed(0)+' per $10K',color:'#ef4444',text:'On a $10,000 portfolio, this drawdown means a paper loss of $'+(m.max_dd*10000).toFixed(0)+'.'},
+      {label:'Recovery needed',value:'+'+((1/(1-m.max_dd)-1)*100).toFixed(1)+'%',color:'#f59e0b',text:'The portfolio needs to gain '+((1/(1-m.max_dd)-1)*100).toFixed(1)+'% to return to its previous peak.'}
+    ]
   };
+  openModal(key.toUpperCase()+' — Portfolio',metricLeftHTML(key.toUpperCase(),values[key],colors[key],subs[key]),cards[key]||[],null);
+}
 
-  document.getElementById('mainContent').innerHTML = `
-    <div class="module-header">
-      <div class="module-title">Investment Score</div>
-      <div class="module-sub">Composite signal synthesising valuation, momentum, quality, and factor analysis</div>
+function showHolding(h,data){
+  const portRet=data.metrics.ann_return;
+  const contribution=h.weight*h.ann_return;
+  const leftHTML=`<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:280px;text-align:center;gap:14px">
+    <div style="font-family:var(--mono);font-size:48px;font-weight:700;color:var(--accent)">${h.ticker}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:320px">
+      <div style="background:#2e2e2e;border-radius:10px;padding:14px"><div style="font-size:10px;color:#718096;margin-bottom:4px">WEIGHT</div><div style="font-family:var(--mono);font-size:20px;font-weight:700">${(h.weight*100).toFixed(1)}%</div></div>
+      <div style="background:#2e2e2e;border-radius:10px;padding:14px"><div style="font-size:10px;color:#718096;margin-bottom:4px">RETURN</div><div style="font-family:var(--mono);font-size:20px;font-weight:700;color:${h.ann_return>=0?'#22c55e':'#ef4444'}">${pct(h.ann_return)}</div></div>
+      <div style="background:#2e2e2e;border-radius:10px;padding:14px"><div style="font-size:10px;color:#718096;margin-bottom:4px">VOLATILITY</div><div style="font-family:var(--mono);font-size:20px;font-weight:700">${pct(h.ann_vol)}</div></div>
+      <div style="background:#2e2e2e;border-radius:10px;padding:14px"><div style="font-size:10px;color:#718096;margin-bottom:4px">SHARPE</div><div style="font-family:var(--mono);font-size:20px;font-weight:700;color:${h.sharpe>1?'#22c55e':h.sharpe>0.5?'#f59e0b':'#ef4444'}">${fix2(h.sharpe)}</div></div>
     </div>
+  </div>`;
+  const allH=data.holdings;
+  const bestSharpe=allH.reduce((a,b)=>a.sharpe>b.sharpe?a:b);
+  const worstSharpe=allH.reduce((a,b)=>a.sharpe<b.sharpe?a:b);
+  openModal(h.ticker+' — Holding Detail',leftHTML,[
+    {label:'Return contribution',value:pct(contribution),color:contribution>=0?'#22c55e':'#ef4444',text:h.ticker+' at '+( h.weight*100).toFixed(1)+'% weight with '+pct(h.ann_return)+' return contributed '+pct(contribution)+' to the portfolios total return of '+pct(portRet)+'.'},
+    {label:'Risk-adjusted return',value:'Sharpe '+fix2(h.sharpe),color:h.sharpe>1?'#22c55e':h.sharpe>0.5?'#f59e0b':'#ef4444',text:h.ticker+' Sharpe of '+fix2(h.sharpe)+' '+(h.ticker===bestSharpe.ticker?'is the best in the portfolio — it is delivering the best return per unit of risk.':h.ticker===worstSharpe.ticker?'is the weakest in the portfolio on a risk-adjusted basis.':'is middle of the pack in this portfolio.')+''},
+    {label:'Volatility impact',value:pct(h.ann_vol),color:'#d1d5db',text:h.ticker+' has '+(h.ann_vol>data.metrics.ann_vol?'higher':'lower')+' volatility than the portfolio ('+pct(h.ann_vol)+' vs portfolio '+pct(data.metrics.ann_vol)+'). '+(h.ann_vol>data.metrics.ann_vol?'It is a volatility driver — reducing its weight would lower portfolio risk.':'It is a stabilising holding.')},
+    {label:'Weight optimisation',value:'Max Sharpe: '+(((data.max_sharpe_weights[h.ticker]||0)*100).toFixed(1)+'%'),color:'#718096',text:'The Maximum Sharpe optimiser suggests a weight of '+(((data.max_sharpe_weights[h.ticker]||0)*100).toFixed(1))+'% for '+h.ticker+' (currently '+( h.weight*100).toFixed(1)+'%). '+(Math.abs((data.max_sharpe_weights[h.ticker]||0)-h.weight)>0.05?'A meaningful change from current weight.':'Close to optimal.')+ ''}
+  ],null);
+}
 
-    <div class="ticker-badge">
-      <span class="sym">${t}</span>
+function showPortChart(key,data){
+  const chartHTML='<div id="modalChart" style="height:360px"></div>';
+  const c=data.charts;
+  const cards={
+    perf:[
+      {label:'Portfolio return',value:pct(data.metrics.ann_return),color:'#15803d',text:'The green line shows the combined portfolio. When it is above the white dashed line, the portfolio is outperforming the S&P 500. Both lines start at 100 for fair comparison.'},
+      {label:'S&P 500 benchmark',value:pct(data.metrics.bench_return||0),color:'#ffffff',text:'The white dashed line is the S&P 500. The gap between lines shows your portfolios active performance relative to simply holding an index fund.'},
+      {label:'Active return',value:pct((data.metrics.ann_return||0)-(data.metrics.bench_return||0)),color:((data.metrics.ann_return||0)-(data.metrics.bench_return||0))>=0?'#22c55e':'#ef4444',text:'Portfolio '+(data.metrics.ann_return>(data.metrics.bench_return||0)?'outperformed':'underperformed')+' the S&P 500 by '+Math.abs(((data.metrics.ann_return||0)-(data.metrics.bench_return||0))*100).toFixed(2)+'% per year.'}
+    ],
+    corr:[
+      {label:'Correlation scale',value:'-1 to +1',color:'#d1d5db',text:'Green = highly correlated (move together). Dark = uncorrelated or inversely correlated. For diversification benefit, you want some dark cells showing low correlation between holdings.'},
+      {label:'Diversification quality',value:'Avg corr: '+data.portfolio_score.avg_correlation,color:data.portfolio_score.avg_correlation>0.7?'#ef4444':data.portfolio_score.avg_correlation>0.5?'#f59e0b':'#22c55e',text:'Average cross-asset correlation of '+data.portfolio_score.avg_correlation+'. '+(data.portfolio_score.avg_correlation>0.7?'Very high correlation — your holdings move together. In a market selloff, all will fall simultaneously. Adding uncorrelated assets would meaningfully improve diversification.':data.portfolio_score.avg_correlation>0.5?'Moderate correlation. Some diversification benefit.':'Low correlation — good diversification benefit.')+''},
+      {label:'What to add',value:'Low-corr assets',color:'#718096',text:'To improve diversification, add assets that are less correlated with your current holdings. Bonds, commodities, international stocks, or different sectors typically have lower correlation with US tech stocks.'}
+    ],
+    ef:[
+      {label:'What each dot is',value:'3,000 portfolios',color:'#d1d5db',text:'Each dot is a randomly generated set of weights across your holdings. 3,000 combinations are plotted simultaneously to show the full range of risk/return possibilities.'},
+      {label:'Colour (Sharpe ratio)',value:'Yellow = best',color:'#22c55e',text:'Yellow dots have the highest Sharpe ratio — best risk-adjusted return. Purple dots have poor risk-adjusted returns. Aim for the yellow cluster.'},
+      {label:'The efficient frontier',value:'Top-left boundary',color:'#d1d5db',text:'The curved upper-left boundary of dots is the efficient frontier — the optimal risk/return combinations. Any portfolio below and to the right is suboptimal: you could get the same return with less risk.'},
+      {label:'Optimal portfolios',value:'Min Var & Max Sharpe',color:'#718096',text:'The two optimised portfolios shown below represent the mathematical optimums: minimum variance (leftmost point) and maximum Sharpe (highest yellow dot). Both are calculated via scipy optimisation.'}
+    ]
+  };
+  const renderers={
+    perf:()=>Plotly.newPlot('modalChart',[{x:c.dates,y:c.port_cumulative,name:'Portfolio',line:{color:'#15803d',width:2.5},type:'scatter'},{x:c.dates,y:c.bench_cumulative,name:'S&P 500',line:{color:'#ffffff',width:2,dash:'dot'},type:'scatter'}],lay({margin:{t:10,r:10,b:40,l:50}}),CFG),
+    corr:()=>{const corr=data.corr_matrix;Plotly.newPlot('modalChart',[{z:corr.values,x:corr.labels,y:corr.labels,type:'heatmap',colorscale:[[0,'#1c1c1c'],[0.5,'#22c55e'],[1,'#f1f5f9']],zmin:-1,zmax:1}],lay({margin:{t:10,r:20,b:60,l:60},xaxis:{...PL.xaxis,type:'category'},yaxis:{...PL.yaxis,type:'category'}}),CFG);},
+    ef:()=>{const ef=data.efficient_frontier;Plotly.newPlot('modalChart',[{x:ef.vols.map(v=>v*100),y:ef.returns.map(v=>v*100),mode:'markers',type:'scatter',marker:{color:ef.sharpes,colorscale:'Viridis',size:4,showscale:true,colorbar:{title:'Sharpe',thickness:12}}}],lay({xaxis:{...PL.xaxis,title:'Volatility (%)',type:'linear'},yaxis:{...PL.yaxis,title:'Return (%)',type:'linear'},hovermode:'closest',margin:{t:10,r:80,b:40,l:55}}),CFG);}
+  };
+  openModal('Portfolio — '+key.toUpperCase()+' Chart',chartHTML,cards[key]||[],renderers[key]||null);
+}
+
+// Score arc SVG helper
+function scoreArc(score, color) {
+  const r = 54, cx = 65, cy = 65, stroke = 10;
+  const circ = 2 * Math.PI * r;
+  const fill = (score / 100) * circ;
+  const gap = circ - fill;
+  // Start from top (-90 deg)
+  return `<svg width="130" height="130" viewBox="0 0 130 130">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#2e2e2e" stroke-width="${stroke}"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+      stroke-dasharray="${fill} ${gap}"
+      stroke-dashoffset="${circ * 0.25}"
+      stroke-linecap="round"/>
+    <text x="${cx}" y="${cy + 10}" text-anchor="middle" fill="#f1f5f9"
+      font-family="Inter,-apple-system,sans-serif" font-size="30" font-weight="600">${score}</text>
+  </svg>`;
+}
+
+// Module 4 — Investment Score
+function renderScore(data){
+  const s=data.score,t=data.ticker;
+  const sc=s.composite>=75?'#22c55e':s.composite>=60?'#22c55e':s.composite>=45?'#f59e0b':'#ef4444';
+  const vc=s.verdict_class==='positive'?'pos':s.verdict_class==='negative'?'neg':'amb';
+  const cL={valuation:'Valuation',momentum:'Momentum',quality:'Quality',risk_adjusted:'Risk-Adjusted Return',factor:'Factor Attractiveness'};
+  document.getElementById('mainContent').innerHTML=`
+    <div class="module-header"><div class="module-title">Investment Score</div><div class="module-sub">Composite signal synthesising valuation, momentum, quality, and factor analysis</div></div>
+    <div class="ticker-badge"><span class="sym">${t}</span></div>
+    <div class="score-hero" onclick='showScoreOverview(${JSON.stringify(s)},"${t}")'>
+      <div class="score-circle">${scoreArc(s.composite, sc)}</div>
+      <div class="score-verdict"><div class="verdict-text ${vc}">${s.verdict}</div><div style="font-size:12px;color:var(--muted);margin-top:8px">Click for full breakdown</div></div>
     </div>
-
-    <div class="score-hero">
-      <div class="score-circle" style="border-color:${scoreColor}">
-        <div class="score-number" style="color:${scoreColor}">${s.composite}</div>
-        <div class="score-label">/ 100</div>
-      </div>
-      <div class="score-verdict">
-        <div class="verdict-text ${verdictClass}">${s.verdict}</div>
-      </div>
-    </div>
-
-    <div class="section-head">Component Scores</div>
+    <div class="section-head">Component Scores — click any row for explanation</div>
     <div class="score-components">
-      ${Object.entries(s.scores).map(([k, v]) => {
-        const color = v >= 65 ? '#22c55e' : v >= 45 ? '#f59e0b' : '#ef4444';
-        const weight = (s.weights[k] * 100).toFixed(0);
-        return `
-          <div class="score-row">
-            <div class="score-row-label">
-              <span>${componentLabels[k] || k}</span>
-              <span class="score-weight">${weight}%</span>
-            </div>
-            <div class="score-bar-wrap">
-              <div class="score-bar" style="width:${v}%;background:${color}"></div>
-            </div>
-            <div class="score-row-val" style="color:${color}">${v}</div>
-            <div class="score-expl">${s.explanations[k]}</div>
-          </div>`;
-      }).join('')}
+      ${Object.entries(s.scores).map(([k,v])=>{const color=v>=65?'#22c55e':v>=45?'#f59e0b':'#ef4444';return`<div class="score-row" onclick='showScoreComponent("${k}",${v},"${t}",${JSON.stringify(s)})' style="cursor:pointer;padding:8px;border-radius:8px;transition:background 0.15s" onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background='transparent'">
+        <div class="score-row-label"><span>${cL[k]||k}</span><span class="score-weight">${(s.weights[k]*100).toFixed(0)}%</span></div>
+        <div class="score-bar-wrap"><div class="score-bar" style="width:${v}%;background:${color}"></div></div>
+        <div class="score-row-val" style="color:${color}">${v}</div>
+        <div class="score-expl">${s.explanations[k]}</div>
+      </div>`;}).join('')}
     </div>
-
-    <div class="chart-full"><div class="cc">
-      <div class="cc-t">Score Breakdown</div>
+    <div class="section-head">Radar Breakdown — click to expand</div>
+    <div class="chart-full"><div class="cc" onclick='showScoreOverview(${JSON.stringify(s)},"${t}")'>
+      <div class="cc-t">All Component Scores</div>
       <div id="chartScore" style="height:480px"></div>
     </div></div>
-  `;
+    <div class="section-head" style="margin-top:8px">Investment Score — 12-Month History</div>
+    <div class="chart-full"><div class="cc">
+      <div class="cc-t">How has the Investment Score evolved over the past 12 months?</div>
+      <div id="scoreTs-loading" style="display:flex;align-items:center;justify-content:center;height:280px;color:var(--muted);gap:10px"><div class="spinner"></div><div>Computing 12 monthly scores — takes ~30 seconds…</div></div>
+      <div id="chartScoreTs" style="height:280px;display:none"></div>
+    </div></div>`;
+  const keys=Object.keys(s.scores);
+  const vals=Object.values(s.scores);
+  const rL={valuation:'Valuation',momentum:'Momentum',quality:'Quality',risk_adjusted:'Risk-Adj',factor:'Factor'};
+  setTimeout(()=>Plotly.newPlot('chartScore',[{type:'scatterpolar',r:[...vals,vals[0]],theta:[...keys.map(k=>rL[k]||k),rL[keys[0]]||keys[0]],fill:'toself',fillcolor:'rgba(209,213,219,0.1)',line:{color:'#d1d5db',width:2.5},marker:{size:7,color:'#d1d5db'},name:t}],{...lay(),polar:{radialaxis:{visible:true,range:[0,100],color:'#718096',gridcolor:'#2e2e2e',tickfont:{size:9}},angularaxis:{color:'#a0aec0',tickfont:{size:13}},bgcolor:'transparent'},margin:{t:100,r:160,b:100,l:160}},CFG),50);
+  loadScoreTimeseries(t);
+}
 
-  const keys = Object.keys(s.scores);
-  const vals = Object.values(s.scores);
-  Plotly.newPlot('chartScore', [{
-    type: 'scatterpolar',
-    r: [...vals, vals[0]],
-    theta: [...keys.map(k => componentLabels[k] || k), componentLabels[keys[0]] || keys[0]],
-    fill: 'toself',
-    fillcolor: 'rgba(59,130,246,0.15)',
-    line: { color: '#3b82f6', width: 2 },
-    marker: { size: 6, color: '#3b82f6' },
-    name: t
-  }], {
-    ...layout(),
-    polar: {
-      radialaxis: { visible: true, range: [0, 100], color: '#475569', gridcolor: '#1a2540', tickfont: { size: 9 } },
-      angularaxis: { color: '#94a3b8', tickfont: { size: 12 } },
-      bgcolor: 'transparent'
-    },
-    margin: { t: 100, r: 160, b: 100, l: 160 },
-    height: 450
-  }, { responsive: true, displayModeBar: false });
+async function loadScoreTimeseries(ticker) {
+  try {
+    const res = await fetch('/api/score/timeseries', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ticker})
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    const s = data.series;
+    const dates = s.map(p => p.date);
+    document.getElementById('scoreTs-loading').style.display = 'none';
+    document.getElementById('chartScoreTs').style.display = 'block';
+    Plotly.newPlot('chartScoreTs', [
+      {x:dates,y:s.map(p=>p.composite),name:'Composite',line:{color:'#d1d5db',width:3},type:'scatter',mode:'lines+markers',marker:{size:6,color:s.map(p=>p.composite>=75?'#22c55e':p.composite>=45?'#f59e0b':'#ef4444')}},
+      {x:dates,y:s.map(p=>p.valuation),name:'Valuation',line:{color:'#f59e0b',width:1.5,dash:'dot'},type:'scatter',visible:'legendonly'},
+      {x:dates,y:s.map(p=>p.momentum),name:'Momentum',line:{color:'#22c55e',width:1.5,dash:'dot'},type:'scatter',visible:'legendonly'},
+      {x:dates,y:s.map(p=>p.quality),name:'Quality',line:{color:'#3b82f6',width:1.5,dash:'dot'},type:'scatter',visible:'legendonly'},
+      {x:dates,y:s.map(p=>p.risk_adjusted),name:'Risk-Adj',line:{color:'#a855f7',width:1.5,dash:'dot'},type:'scatter',visible:'legendonly'},
+      {x:dates,y:s.map(p=>p.factor),name:'Factor',line:{color:'#ef4444',width:1.5,dash:'dot'},type:'scatter',visible:'legendonly'},
+    ], lay({
+      xaxis:{...PL.xaxis,type:'category',tickangle:-30},
+      yaxis:{...PL.yaxis,range:[Math.max(0,Math.min(...s.map(p=>p.composite))-8),Math.min(100,Math.max(...s.map(p=>p.composite))+8)],title:'Score'},
+      hovermode:'x unified',
+      legend:{orientation:'h',y:-0.3,font:{size:11}},
+      margin:{t:10,r:20,b:90,l:55},
+      shapes:[
+        {type:'line',x0:dates[0],x1:dates[dates.length-1],y0:75,y1:75,line:{color:'rgba(34,197,94,0.2)',dash:'dot',width:1}},
+        {type:'line',x0:dates[0],x1:dates[dates.length-1],y0:45,y1:45,line:{color:'rgba(239,68,68,0.2)',dash:'dot',width:1}},
+      ]
+    }), CFG);
+  } catch(err) {
+    document.getElementById('scoreTs-loading').innerHTML = '<div style="color:#ef4444">Error: ' + err.message + '</div>';
+  }
+}
+
+function showScoreOverview(s,ticker){
+  const keys=Object.keys(s.scores);const vals=Object.values(s.scores);
+  const rL={valuation:'Valuation',momentum:'Momentum',quality:'Quality',risk_adjusted:'Risk-Adj',factor:'Factor'};
+  const chartHTML='<div id="modalChart" style="height:360px"></div>';
+  const best=Object.entries(s.scores).sort((a,b)=>b[1]-a[1])[0];
+  const worst=Object.entries(s.scores).sort((a,b)=>a[1]-b[1])[0];
+  openModal(ticker+' — Investment Score '+s.composite+'/100',chartHTML,[
+    {label:'Composite score',value:s.composite+'/100',color:s.composite>=65?'#22c55e':s.composite>=45?'#f59e0b':'#ef4444',text:'Built from five weighted components: Valuation 25%, Momentum 20%, Quality 20%, Risk-Adjusted Return 20%, Factor Attractiveness 15%.'},
+    {label:'Strongest signal',value:best[0]+': '+best[1]+'/100',color:'#22c55e',text:ticker+' "highest score is '+ best[0]+' at '+best[1]+'/100. This is where the investment case is strongest.'},
+    {label:'Weakest signal',value:worst[0]+': '+worst[1]+'/100',color:'#ef4444',text:ticker+' "lowest score is '+worst[0]+' at '+worst[1]+'/100. This is the primary risk or concern to monitor.'},
+    {label:'Caveat',value:'Research tool',color:'#718096',text:'This score is a structured quantitative heuristic built for screening and research. It is not a validated trading signal. Use it alongside your own fundamental analysis and conviction.'}
+  ],()=>{Plotly.newPlot('modalChart',[{type:'scatterpolar',r:[...vals,vals[0]],theta:[...keys.map(k=>rL[k]||k),rL[keys[0]]||keys[0]],fill:'toself',fillcolor:'rgba(209,213,219,0.1)',line:{color:'#d1d5db',width:2.5},name:ticker}],{...lay(),polar:{radialaxis:{visible:true,range:[0,100],color:'#718096',gridcolor:'#2e2e2e'},angularaxis:{color:'#a0aec0'},bgcolor:'transparent'},margin:{t:30,r:80,b:30,l:80}},CFG);});
+}
+
+function showScoreComponent(key,value,ticker,s){
+  const color=value>=65?'#22c55e':value>=45?'#f59e0b':'#ef4444';
+  const leftHTML=metricLeftHTML(key.replace('_',' ').toUpperCase(),value+'/100',color,s.explanations[key]);
+  const cL={valuation:'Valuation',momentum:'Momentum',quality:'Quality',risk_adjusted:'Risk-Adjusted Return',factor:'Factor Attractiveness'};
+  const cards={
+    valuation:[
+      {label:'Valuation score',value:value+'/100',color:color,text:s.explanations.valuation+'. Valuation has the highest weight (25%) because overpaying is the single biggest risk in equity investing.'},
+      {label:'Interpretation',value:value<40?'Expensive':value<60?'Fair':'Cheap',color:color,text:value<40?ticker+' appears expensive on traditional multiples. High-growth companies can justify high multiples, but it increases the risk of disappointment.':value>=65?ticker+' looks attractively valued on traditional multiples. This provides a margin of safety.':ticker+' is trading near fair value.'},
+      {label:'Key inputs',value:'P/E · P/B · Fwd P/E',color:'#718096',text:'Valuation is scored using trailing P/E, price-to-book, and forward P/E. Lower multiples score higher. Forward P/E below trailing P/E (earnings growth expected) adds a small bonus.'}
+    ],
+    momentum:[
+      {label:'Momentum score',value:value+'/100',color:color,text:s.explanations.momentum+'. Measured across 12M, 3M, and 1M timeframes.'},
+      {label:'Academic basis',value:'Carhart factor',color:'#d1d5db',text:'Momentum is one of the most robust anomalies in academic finance. Stocks with strong recent performance tend to continue outperforming over the next 3-12 months.'},
+      {label:'Timeframes',value:'12M · 3M · 1M',color:'#718096',text:'12-month momentum captures the trend; 3-month captures medium-term; 1-month captures recent. All three pointing positive is the strongest signal.'}
+    ],
+    quality:[
+      {label:'Quality score',value:value+'/100',color:color,text:s.explanations.quality+'.'},
+      {label:'Key metrics',value:'ROE · Margins · D/E',color:'#d1d5db',text:'Quality is measured via Return on Equity (profitability), net profit margins (efficiency), and debt-to-equity (financial stability). Strong scores on all three = high-quality business.'},
+      {label:'Link to FF5',value:'RMW factor',color:'#718096',text:'Quality here aligns with the RMW (Robust Minus Weak profitability) factor in the Fama-French 5-factor model. High-quality firms have historically earned a return premium.'}
+    ],
+    risk_adjusted:[
+      {label:'Risk-adjusted score',value:value+'/100',color:color,text:s.explanations.risk_adjusted+'.'},
+      {label:'Inputs',value:'Sharpe · Alpha',color:'#d1d5db',text:'Built from Sharpe ratio (return per unit of total risk) and Jensens Alpha (return above CAPM). Both need to be strong for a high score.'},
+      {label:'Why 20% weight',value:'Risk-adjusted is key',color:'#718096',text:'A PM ultimately cares about risk-adjusted return, not raw return. This component ensures the score rewards efficient risk-taking.'}
+    ],
+    factor:[
+      {label:'Factor score',value:value+'/100',color:color,text:s.explanations.factor+'.'},
+      {label:'Primary driver',value:'Residual alpha',color:'#d1d5db',text:'The primary input is FF5 residual alpha — return unexplained by any systematic factor. High residual alpha is the strongest signal of genuine stock-specific outperformance.'},
+      {label:'Also considers',value:'RMW · HML · R²',color:'#718096',text:'Secondary inputs: profitability loading (RMW), value loading (HML), and R². Lower R² means less factor dependence and more idiosyncratic alpha.'}
+    ]
+  };
+  openModal(cL[key]+' Score — '+ticker,leftHTML,cards[key]||[],null);
 }
 </script>
 </body>
